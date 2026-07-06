@@ -1,0 +1,41 @@
+# Byte-compiled / optimized
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.venv/
+.venv-bot/
+.venv-train/
+venv/
+.env
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# macOS
+.DS_Store
+
+# Engine local run outputs (pipes, logs, recordings scratch)
+.agario/
+**/submission*/
+vendor/agario-public/.agario/
+
+# Training artifacts
+wandb/
+checkpoints/
+runs/
+data/
+*.pt
+app1.log
+
+# Replay ingestion inbox (v3 pipeline input — large JSONs, not code)
+match_replays/

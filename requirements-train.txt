@@ -1,0 +1,20 @@
+# Training dependencies (P0.1) — the "everything" environment.
+#
+# This venv is NEVER shipped to the grader. It may contain torch and anything
+# else. The import-linter contract guarantees no bot/ module reaches into here.
+#
+# Install the bot deps too (the trainer imports bot.featurizer / bot.adapters),
+# then layer the heavy training stack on top.
+-r requirements-bot.txt
+
+# Deep-learning stack.
+torch>=2.4
+
+# Experiment tracking + RL substrate (P3: PPO harness / league).
+# sample-factory is the default actor-learner substrate; swapped for a custom
+# harness at P3.1 if the multi-agent impedance mismatch is severe.
+wandb>=0.17
+
+# Test / property-test tooling (Q-track).
+hypothesis>=6.100
+pandas>=2.2

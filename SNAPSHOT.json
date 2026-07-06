@@ -1,0 +1,39 @@
+{
+  "title": "Project scaffold and dependency boundaries",
+  "purpose": "Set up bot/train packages, separate dependency lists, and the implementation plan.",
+  "kind": "reconstructed-initial",
+  "ref": "1dd62ef6495f305c60e5d7aa7c7993092e90a4dd",
+  "date": null,
+  "pin": "c62e89d7d9f505a1c711248fe0429ba555c28323",
+  "number": 1,
+  "folder": "01-project-scaffold-and-dependency-boundaries",
+  "file_count": 9,
+  "bytes": 11423,
+  "delta": {
+    "added": [
+      ".DS_Store",
+      ".gitignore",
+      ".importlinter",
+      "Makefile",
+      "README.md",
+      "bot/__init__.py",
+      "requirements-bot.txt",
+      "requirements-train.txt",
+      "train/__init__.py"
+    ],
+    "modified": [],
+    "deleted": []
+  },
+  "documentation": "single editorial README; original notes and Markdown removed",
+  "sha256": {
+    ".DS_Store": "120a7cdcb76cb7dedc687703adbf3d0f11787338540cead629ef118851011ef7",
+    ".gitignore": "ab0ade641b5c63412d53142a824248f539089a364fdfb70df26adb673dfd2c6f",
+    ".importlinter": "13eba475bac0e0eabc2c648091c9538610b941a90768aa40aa58b8e5092d644d",
+    "Makefile": "ca1809e7cb8477540189c7e854258bf1c1b64e7dc0a859df5a0ab0569c37d1ad",
+    "README.md": "022d809b1ec5ab0f9192f2ba46d23d35b82603db6d35175dcc49765c08694242",
+    "bot/__init__.py": "8bca39ff827db2a23436c6a22161eecf117be1359e8c711285474c0614e9ec1d",
+    "requirements-bot.txt": "5d5276057d7904bc14275cce0db1e39ca1713751a4d9081f1edeb7323617a5b4",
+    "requirements-train.txt": "224f643ac321e1d2a582fcb0268e44d25eb3c392510b871fde6b8479862eebed",
+    "train/__init__.py": "2e9547d7aeebaef1f1a62d2495f141ec9d26dca20f1be09248578972758be6f4"
+  }
+}

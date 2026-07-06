@@ -1,0 +1,30 @@
+# Match-legal bot dependencies (P0.1).
+#
+# The grader sandbox permits, beyond the kit's own pydantic/dotmap:
+#   numpy, networkx, wasmtime, pandas
+# The bot deliberately uses ONLY numpy. networkx/pandas/wasmtime are legal but
+# unused here (wasmtime enters in v2 Phase 9 if gate G0 passes).
+#
+# The kit (helper/lib/engine models the bot imports) is installed from the
+# vendored engine submodule so bot deps track the pinned physics exactly.
+
+numpy>=2.0
+
+# agario-kit — pinned engine, installed (non-editable) from the submodule.
+# Brings pydantic + dotmap transitively (the only non-numpy libs the bot is
+# allowed to lean on).
+#
+# NOTE: a *non-editable* install is deliberate. This machine's Homebrew
+# Python 3.12 does not process `.pth` files in venv site-packages, so
+# hatchling's editable install (which relies on a `.pth`) leaves `engine` /
+# `agario_visualiser` unimportable. A regular install copies the packages
+# straight into site-packages and is robust. Re-run `pip install
+# ./vendor/agario-public` after bumping the submodule pin or patching the
+# engine (e.g. the P1.5 vision optimization).
+./vendor/agario-public
+
+# import-linter is a lint tool, not a runtime dep, but it analyses statically
+# (grimp AST scan — no execution) so it lives here to keep the bot venv able to
+# self-check without a full train venv.
+import-linter>=2.0
+pytest>=8.0

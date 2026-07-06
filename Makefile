@@ -1,0 +1,5 @@
+# Reconstructed stage gate; full historical Makefile arrives at stage 15.
+PY ?= python3.12
+.PHONY: test
+test:
+	$(PY) -m pytest tests/ -q

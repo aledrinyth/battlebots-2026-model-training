@@ -1,0 +1,24 @@
+# Import-linter contracts (P0.1).
+# Run with:  lint-imports   (from a venv that has import-linter installed)
+#
+# The single load-bearing rule: the match-legal bot may never depend on the
+# training stack. If any module under bot/ imports train or torch (directly or
+# transitively), CI fails and the illegal import can't reach the grader.
+
+[importlinter]
+root_packages =
+    bot
+    train
+# Required because `torch` (a forbidden module below) is external to the
+# root packages — import-linter must be told to include external packages in
+# the graph to reason about them.
+include_external_packages = True
+
+[importlinter:contract:bot-is-match-legal]
+name = bot must not import train or torch
+type = forbidden
+source_modules =
+    bot
+forbidden_modules =
+    train
+    torch
