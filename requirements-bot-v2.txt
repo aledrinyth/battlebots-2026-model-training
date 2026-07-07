@@ -1,0 +1,9 @@
+# v2 bot dependencies — only relevant if gate G0 (P0.3) passed (it did).
+#
+# Layers wasmtime on top of the match-legal bot deps. wasmtime is on the
+# grader's whitelist, so this stays match-legal. Keeps the strict v1 bot env
+# (requirements-bot.txt) free of wasmtime until the C→WASM core (v2 Phase 9)
+# actually ships.
+-r requirements-bot.txt
+
+wasmtime>=46
