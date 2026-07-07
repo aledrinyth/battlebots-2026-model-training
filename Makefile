@@ -2,4 +2,4 @@
 PY ?= python3.12
 .PHONY: test
 test:
-	$(PY) -m pytest tests/ -q
+	$(PY) -m pytest tests/test_reference_fixtures.py tests/test_spec_constants.py -q

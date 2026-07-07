@@ -1,0 +1,3 @@
+[submodule "vendor/agario-public"]
+	path = vendor/agario-public
+	url = https://github.com/syncs-usyd/agario-public.git

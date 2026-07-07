@@ -4,9 +4,9 @@ Build the training pipeline around the competition engine, then ship a bot that 
 
 ## Where I'm at
 
-Start small. Two packages: `bot` is what can go into a match, `train` is where the expensive stuff lives. Separate requirements because I don't want torch sneaking into a submission.
+Engine is now in `vendor/agario-public`, constants in `bot/spec.py`. Keep the engine version pinned. Seriously, don't adjust our constants to make a test green without checking the engine first.
 
-First jobs: get the engine pinned, run one boring reference game, check the actual protocol. Model choice can wait. The import boundary matters more right now than another architecture sketch.
+Reference fixtures are in `tests/fixtures/`. Plan is to compare against something real before building a fast training wrapper. Python 3.12; install the engine from the local vendor directory, not an editable install. The old environment had trouble with editable package paths.
 
 ## Running things
 
@@ -14,4 +14,4 @@ Python 3.12. Start with the requirements for the part being exercised. This is a
 
 ---
 
-Progression copy 01. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This intermediate stage is reconstructed. Git reference: `1dd62ef`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 02. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This intermediate stage is reconstructed. Git reference: `1dd62ef`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
