@@ -159,7 +159,7 @@ class WrapperEnv:
     def reset(self) -> Dict[int, QueryMovePlayer]:
         """Start a fresh game and return round-0 observations for all players."""
         _ensure_engine_workspace(self.num_players)
-        # fast_vision.install()  # P1.5: NumPy-vectorized vision (idempotent, bit-exact)
+        fast_vision.install()  # P1.5: NumPy-vectorized vision (idempotent, bit-exact)
 
         random.seed(self.seed)
         self.state = GameState()  # round == -1; spawns players/food/viruses via RNG

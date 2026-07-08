@@ -4,11 +4,11 @@ Build the training pipeline around the competition engine, then ship a bot that 
 
 ## Where I'm at
 
-Parity and a benchmark now. Need to know whether the wrapper actually agrees with the pipe runner, not just whether both return plausible scores.
+Fast vision enabled. Compute the observer's frame once, then do the entity checks in arrays. Physics still belongs to the engine.
 
-Visibility snag: checking a blob's center against the window misses circles whose edges overlap it. Food is a point, blobs and viruses aren't. `progression_examples/visibility.py` reproduces that mistake in isolation. It isn't old production source recovered from Git.
+Circle/window fix: find the nearest point on the box to the circle center; compare squared distance with squared radius. Inclusive boundary. Food keeps its point test. The little visibility example now checks inside, outside, and touching cases.
 
-Don't touch the eat loops yet. Profile first.
+Need exact membership AND ordering to match, not merely roughly equal visible counts. That's where a "harmless" optimization can change the whole trajectory.
 
 ## Running things
 
@@ -16,4 +16,4 @@ Python 3.12. Start with the requirements for the part being exercised. This is a
 
 ---
 
-Progression copy 05. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This intermediate stage is reconstructed. Git reference: `1dd62ef`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 06. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This intermediate stage is reconstructed. Git reference: `1dd62ef`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
