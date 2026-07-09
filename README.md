@@ -4,11 +4,11 @@ Build the training pipeline around the competition engine, then ship a bot that 
 
 ## Where I'm at
 
-Shared featurizer and action adapter now, plus some scripted opponents. Same features in training and the actual bot. No separate clever inference-side normalization.
+Fix the row comparison, leave the features alone.
 
-Food baseline first. Cautious/chaser opponents after that. A learned policy beating a stationary bot won't tell me much.
+The encoder pools sets, so row order isn't the property we care about. Compare the same rows with multiplicity preserved. A set is wrong because duplicate rows disappear. Production checks need tolerance; the small example uses exact tuples so the failure is obvious.
 
-One annoying test issue: equally distant entities can swap rows after a translation because of tiny floating-point differences. The row-comparison example shows the bad assertion. Don't fix a test problem by changing the frozen feature contract.
+This is a test correction, not evidence that the policy suddenly got better. Anyway, back to the harness.
 
 ## Running things
 
@@ -18,4 +18,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 07. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This intermediate stage is reconstructed. Git reference: `1dd62ef`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 08. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This intermediate stage is reconstructed. Git reference: `1dd62ef`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
