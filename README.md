@@ -4,9 +4,11 @@ Build the training pipeline around the competition engine, then ship a bot that 
 
 ## Where I'm at
 
-Custom actor/learner harness. A seat needs its own state; treating an eight-player game as one ordinary single-agent env is going to make a mess.
+Network + PPO + recurrent rollouts. This is the part worth being fussy about.
 
-Shared memory for observations. Batch policy calls in the learner. Keep a stub policy until the plumbing is predictable. TODO: actor failure must wake the learner, otherwise a bad worker just looks like training stopped.
+Death ends a live segment. The respawn gap is inactive. Bootstrap must be masked at death, the GAE accumulator must clear over the inactive gap, and inactive rows must stay out of the loss. Otherwise one life trains on the next life's reward and the numbers still look perfectly respectable.
+
+Keep hidden resets explicit. Check the hand-computed rollout cases before burning time on a long run.
 
 ## Running things
 
@@ -16,4 +18,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 09. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This intermediate stage is reconstructed. Git reference: `1dd62ef`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 10. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This intermediate stage is reconstructed. Git reference: `1dd62ef`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
