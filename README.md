@@ -4,11 +4,9 @@ Build the training pipeline around the competition engine, then ship a bot that 
 
 ## Where I'm at
 
-Fix the row comparison, leave the features alone.
+Custom actor/learner harness. A seat needs its own state; treating an eight-player game as one ordinary single-agent env is going to make a mess.
 
-The encoder pools sets, so row order isn't the property we care about. Compare the same rows with multiplicity preserved. A set is wrong because duplicate rows disappear. Production checks need tolerance; the small example uses exact tuples so the failure is obvious.
-
-This is a test correction, not evidence that the policy suddenly got better. Anyway, back to the harness.
+Shared memory for observations. Batch policy calls in the learner. Keep a stub policy until the plumbing is predictable. TODO: actor failure must wake the learner, otherwise a bad worker just looks like training stopped.
 
 ## Running things
 
@@ -18,4 +16,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 08. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This intermediate stage is reconstructed. Git reference: `1dd62ef`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 09. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This intermediate stage is reconstructed. Git reference: `1dd62ef`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
