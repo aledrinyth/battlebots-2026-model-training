@@ -1,0 +1,53 @@
+# P3.5 Stage-0 (gate G1) — ESCALATION №1: multi-seat batch boost (handoff §5.4).
+#
+# The single-seat rig run (g1_rig, batch 124) held the 0.81 floor with
+# value_loss ≈ 0 and entropy oscillating at ~3.7–3.8 — the sparsity wall still
+# binding. This config is the documented next step: 4 shared-policy learning
+# seats per game → batch = num_actors × 4 (496 at num_actors 124) with the SAME
+# reward (pure Δmass), exploration (persistence 0.3/20), and update schedule, so
+# the only changed variable is batch width. Mild predation confound (the four
+# learner blobs share one arena) is accepted per the handoff: food-seeking is
+# learned before size disparity matters, and the G1 eval is still 1-vs-7.
+#
+# NOTE: each actor now runs 4 featurizer+inference rows per round, so rounds/s
+# drops vs g1_rig (~2x). Budget more wall-clock: --duration 3600 or more.
+#
+#   python -m train.harness.run configs/stage0_foodonly_rig_ms4.yaml --duration 3600
+#   # resume = re-run same command; --fresh restarts
+#
+# Judge G1 exactly as before (greedy actions, pure mass, food-only field):
+#   python -m train.harness.evaluate \
+#     --weights runs/g1_rig_ms4/checkpoints/ckpt_v<NNNNNN>.pt \
+#     --opponents dont_move --games 30 --vs-random
+#   # PASS when trained mean_final_mass >= 3x random (== >= ~2.43; floor is 0.81).
+
+name: g1_rig_ms4
+stage: S0-food-only
+out_dir: runs
+total_updates: 0            # bounded by --duration
+duration_s: 0
+checkpoint_interval_s: 300  # every 5 min
+keep_checkpoints: 12
+log_every: 20
+device: cpu
+
+train:
+  num_actors: 124           # batch = num_actors * 4; set to ~(cores - 4)
+  policy_seats: [0, 1, 2, 3]
+  scripted_names: [dont_move]
+  base_seed: 20260715
+  barrier_timeout_s: 300
+  rollout_len: 32
+  gamma: 0.999
+  gae_lambda: 0.95
+  clip: 0.2
+  value_coef: 0.5
+  entropy_coef: 0.01
+  max_grad_norm: 0.5
+  lr: 0.0003
+  ppo_epochs: 2
+  mass_scale: 1.0
+  reward_clip: 10.0
+  food_shaping_coef: 0.0     # PURE Δmass — no shaping
+  explore_persist_prob: 0.3  # unchanged from g1_rig — isolate the batch variable
+  explore_persist_max: 20

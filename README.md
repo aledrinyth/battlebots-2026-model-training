@@ -4,9 +4,11 @@ Build the training pipeline around the competition engine, then ship a bot that 
 
 ## Where I'm at
 
-Two-box path: CPU actors produce shards, learner consumes them and writes weights back. File exchange is easier to debug than a fragile distributed service right now.
+Stage-zero configs, demos, BC warm-start, exploration checks. Try to learn food collection before asking the policy to invent competent combat.
 
-Version the shards and weights. Reject stale data beyond the configured limit. Publish finished files atomically, keep retention bounded, and make the worker shut down on error rather than wait forever. Start with a tiny smoke run. Then scale.
+Need to distinguish "never sees the right state" from "sees it but can't learn the action". Scripted demonstrations help with that. Shaping is a training knob, not a license to change evaluation.
+
+Several configs here. Don't pretend all of them won. Keep the failed directions useful as diagnostics.
 
 ## Running things
 
@@ -16,4 +18,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 13. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This intermediate stage is reconstructed. Git reference: `1dd62ef`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 14. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This intermediate stage is reconstructed. Git reference: `1dd62ef`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.

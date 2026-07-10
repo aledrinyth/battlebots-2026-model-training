@@ -1,0 +1,61 @@
+# P3.5 Stage-0 (gate G1) — BC warm-start -> PPO fine-tune (Track D closer).
+#
+# The BC clone of greedy_food (data/bc_greedy_food_300e60.pt: 300 games / 60
+# epochs, val heading acc 67.5% top-1 / 88% within one bin) already measures
+# 2.69 mean final mass = 3.32x random on the official 30-game G1 eval. This run
+# closes the gate's "still climbing" clause through the actual RL loop: PPO
+# fine-tunes from the BC init, where dense on-policy Δmass reward flows from
+# update 1 and PPO only has to IMPROVE an already-eating policy.
+#
+#   python -m train.harness.run configs/stage0_foodonly_rig_bcft.yaml \
+#     --init-weights data/bc_greedy_food_300e60.pt --duration 3600 \
+#     2>&1 | tee -a runs/g1_rig_bcft/console.log
+#   # (--init-weights applies only on first launch; resume thereafter ignores it)
+#
+# Tuning rationale vs the pure-RL rigs:
+#   - NO exploration crutches (persistence/oracle off): the policy already
+#     covers ground and eats; stay on-policy so the value net calibrates fast.
+#   - lr 1e-4 (vs 3e-4): the critic starts UNTRAINED while the actor is good —
+#     early advantages are noise, so protect the BC policy from being wrecked
+#     before the value net catches up.
+#   - entropy_coef 0.003 (vs 0.01): the BC policy is deliberately peaked; the
+#     standard bonus would actively push it back toward uniform.
+#
+# Watch metrics.jsonl: eats should start HIGH (thousands/rollout at batch 496,
+# not ms4's ~700) and mean_reward should be positive early. G1 verdict:
+#   python -m train.harness.evaluate \
+#     --weights runs/g1_rig_bcft/checkpoints/ckpt_v<NNNNNN>.pt \
+#     --opponents dont_move --games 30 --vs-random
+# PASS = still >= 3x AND above the BC init's 2.69 (PPO improving = "climbing").
+
+name: g1_rig_bcft
+stage: S0-food-only
+out_dir: runs
+total_updates: 0            # bounded by --duration
+duration_s: 0
+checkpoint_interval_s: 300  # every 5 min
+keep_checkpoints: 100
+log_every: 20
+device: cpu
+init_weights: data/bc_greedy_food_300e60.pt   # or pass --init-weights
+
+train:
+  num_actors: 124           # batch = num_actors * 4; set to ~(cores - 4)
+  policy_seats: [0, 1, 2, 3]
+  scripted_names: [dont_move]
+  base_seed: 20260717
+  barrier_timeout_s: 300
+  rollout_len: 32
+  gamma: 0.999
+  gae_lambda: 0.95
+  clip: 0.2
+  value_coef: 0.5
+  entropy_coef: 0.003        # BC policy is peaked; don't push it back to uniform
+  max_grad_norm: 0.5
+  lr: 0.0001                 # protect the BC policy while the fresh critic calibrates
+  ppo_epochs: 2
+  mass_scale: 1.0
+  reward_clip: 10.0
+  food_shaping_coef: 0.0     # PURE Δmass — no shaping
+  explore_persist_prob: 0.0  # on-policy fine-tune: no exploration crutches
+  explore_oracle_prob: 0.0

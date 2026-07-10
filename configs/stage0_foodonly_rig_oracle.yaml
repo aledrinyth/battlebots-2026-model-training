@@ -1,0 +1,67 @@
+# P3.5 Stage-0 (gate G1) — ESCALATION Track C: oracle-guided exploration bursts
+# (notes/P3.5-escalation-alternatives.md).
+#
+# What the ms4 run (batch 496) established: the reward NOW FLOWS (eats ~700 per
+# rollout, value_loss lifted 10-100x off zero) but 74 updates of pure PPO left
+# the policy near-uniform — random-persistence bursts surface eats, yet the
+# gradient still has to *discover* "steer at the nearest food" from undirected
+# data. This config adds the targeted fix: with prob 0.08 a stream runs a burst
+# of U[1,12] rounds acting straight at its nearest food (re-aimed each round).
+# Every rollout then contains correctly-directed approach->eat sequences; the
+# value net learns what food-seeking pays and the policy gradient gets pulled
+# toward it. Collection log-probs are recomputed so PPO stays exact; the eval
+# is oracle-free greedy, so a pass is an honest pass.
+#
+# First-cut mix (~1/3 of steps oracle-guided, most of the rest persistence-held):
+# tune down (0.05) if approx_kl runs hot, up (0.15) if eats do not jump.
+#
+#   TRAIN_TORCH_THREADS=16 python -m train.harness.run \
+#     configs/stage0_foodonly_rig_oracle.yaml --duration 7200 2>&1 \
+#     | tee -a runs/g1_rig_oracle/console.log
+#   # resume = re-run same command; --fresh restarts
+#
+# Judge G1 exactly as before (greedy actions, pure mass, food-only field):
+#   python -m train.harness.evaluate \
+#     --weights runs/g1_rig_oracle/checkpoints/ckpt_v<NNNNNN>.pt \
+#     --opponents dont_move --games 30 --vs-random
+#   # PASS when trained mean_final_mass >= 3x random (== >= ~2.43; floor is 0.81).
+#
+# What to watch in metrics.jsonl:
+#   - eats should jump well above the ms4 baseline (~700/rollout) immediately —
+#     the oracle guarantees it. If it doesn't, something is wrong; stop and debug.
+#   - the LEARNING signal is entropy falling AND STAYING below ~3 with eats
+#     holding as it falls (the policy itself is taking over the eating).
+#   - mean_reward trending positive = eating faster than decay = G1 territory.
+
+name: g1_rig_oracle
+stage: S0-food-only
+out_dir: runs
+total_updates: 0            # bounded by --duration
+duration_s: 0
+checkpoint_interval_s: 300  # every 5 min
+keep_checkpoints: 12
+log_every: 20
+device: cpu
+
+train:
+  num_actors: 124           # batch = num_actors * 4; set to ~(cores - 4)
+  policy_seats: [0, 1, 2, 3]
+  scripted_names: [dont_move]
+  base_seed: 20260716
+  barrier_timeout_s: 300
+  rollout_len: 32
+  gamma: 0.999
+  gae_lambda: 0.95
+  clip: 0.2
+  value_coef: 0.5
+  entropy_coef: 0.01
+  max_grad_norm: 0.5
+  lr: 0.0003
+  ppo_epochs: 2
+  mass_scale: 1.0
+  reward_clip: 10.0
+  food_shaping_coef: 0.0     # PURE Δmass — no shaping
+  explore_persist_prob: 0.3  # coverage bursts (unchanged from ms4)
+  explore_persist_max: 20
+  explore_oracle_prob: 0.08  # Track C: targeted food-seeking bursts
+  explore_oracle_max: 12

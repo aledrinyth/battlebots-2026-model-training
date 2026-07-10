@@ -1,0 +1,61 @@
+# P6.1 Stage-1 (curriculum) — FIRST CUT: scripted-opponent mix, warm-started
+# from the best Stage-0 (g1_rig_bcft) checkpoint.
+#
+# S0 taught food-seeking in a pressure-free field (G1 passed 2026-07-16 at
+# 9.36x). S1 adds what the playbook calls "+viruses +scripted opponents": the
+# four P2.4 anchors fill the non-policy seats, so the agent now faces predation
+# (chaser), competition for food (greedy_food/cautious), and must learn
+# evasion — while the Δmass reward gains real death penalties (losing the body
+# on being eaten). Four shared-policy learning seats keep batch = num_actors*4.
+#
+# LAUNCH ONLY AFTER g1_rig_bcft PLATEAUS — take its best checkpoint:
+#   python -m train.harness.run configs/stage1_mixed.yaml \
+#     --init-weights runs/g1_rig_bcft/checkpoints/ckpt_v<BEST>.pt \
+#     --duration 21600 2>&1 | tee -a runs/stage1_mixed/console.log
+#
+# Playbook P6.1 acceptance: beats greedy_food on MEAN RANK over 200 wrapper
+# games within ~6h of training:
+#   python -m train.harness.evaluate \
+#     --weights runs/stage1_mixed/checkpoints/ckpt_v<N>.pt \
+#     --opponents greedy_food cautious chaser coward dont_move \
+#     --games 200 --workers 16
+#   # want mean_rank clearly < 4.5 and above greedy_food's own head-to-head rank
+#
+# NOT YET IMPLEMENTED (P6.1 remaining work, fine to run without): light domain
+# randomization (spawn seed, food density ±20%) — the playbook's pipeline
+# insurance. Add before long league burns.
+#
+# Watch metrics.jsonl: eats will DROP vs S0 (contested food) and mean_reward
+# will dip (death penalties) — that is the point, not a regression. The eval
+# mean_rank is the verdict.
+
+name: stage1_mixed
+stage: S1-mixed-opponents
+out_dir: runs
+total_updates: 0            # bounded by --duration
+duration_s: 0
+checkpoint_interval_s: 300
+keep_checkpoints: 100
+log_every: 20
+device: cpu
+
+train:
+  num_actors: 124           # batch = num_actors * 4; set to ~(cores - 4)
+  policy_seats: [0, 1, 2, 3]
+  scripted_names: [greedy_food, cautious, chaser, coward]
+  base_seed: 20260718
+  barrier_timeout_s: 300
+  rollout_len: 32
+  gamma: 0.999
+  gae_lambda: 0.95
+  clip: 0.2
+  value_coef: 0.5
+  entropy_coef: 0.003        # keep the peaked policy; opponents supply variety
+  max_grad_norm: 0.5
+  lr: 0.0001                 # fine-tune regime (fresh critic vs new opponents)
+  ppo_epochs: 2
+  mass_scale: 1.0
+  reward_clip: 10.0
+  food_shaping_coef: 0.0
+  explore_persist_prob: 0.0
+  explore_oracle_prob: 0.0

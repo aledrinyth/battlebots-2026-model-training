@@ -1,0 +1,53 @@
+# P3.5 Stage-0 (gate G1) — PURE Δmass at rig-scale batch (multi-core CPU box).
+#
+# This is the playbook's real intent: dense Δmass (food_shaping_coef=0, NO
+# shaping), bootstrapped by a large batch. batch = num_actors * len(policy_seats)
+# = num_actors (single food-gathering seat). On a ~128-core box, num_actors 96
+# gives batch 96 (~8x a laptop) with headroom for the learner process. Random
+# exploration across ~96 parallel games surfaces enough eats per update for the
+# gradient to bootstrap food-seeking WITHOUT any reward shaping.
+#
+# Tune num_actors to (cores - a few). If spawn is slow, keep barrier_timeout_s high.
+#
+#   python -m train.harness.run configs/stage0_foodonly_rig.yaml --duration 2400
+#   # resume = re-run same command; --fresh restarts
+#
+# Judge G1 (greedy actions, pure mass, food-only field):
+#   python -m train.harness.evaluate \
+#     --weights runs/g1_rig/checkpoints/ckpt_v<NNNNNN>.pt \
+#     --opponents dont_move --games 30 --vs-random
+#   # PASS when trained mean_final_mass >= 3x random (== >= ~2.43; floor is 0.81).
+
+name: g1_rig
+stage: S0-food-only
+out_dir: runs
+total_updates: 0            # bounded by --duration
+duration_s: 0
+checkpoint_interval_s: 300  # every 5 min
+keep_checkpoints: 12
+log_every: 20
+device: cpu
+
+train:
+  num_actors: 96            # batch = 96; set to ~(cores - 4)
+  policy_seats: [0]
+  scripted_names: [dont_move]
+  base_seed: 20260715
+  barrier_timeout_s: 300
+  rollout_len: 32
+  gamma: 0.999
+  gae_lambda: 0.95
+  clip: 0.2
+  value_coef: 0.5
+  entropy_coef: 0.01
+  max_grad_norm: 0.5
+  lr: 0.0003
+  ppo_epochs: 2
+  mass_scale: 1.0
+  reward_clip: 10.0
+  food_shaping_coef: 0.0     # PURE Δmass — no shaping
+  # Temporally-extended exploration (Dabney et al. 2020 / AgarCL): short bursts of
+  # action persistence sweep the arena so the agent finds food to learn from.
+  # Training-only; the deployed bot is unaffected. Tune if needed.
+  explore_persist_prob: 0.3  # chance a free stream starts a hold burst
+  explore_persist_max: 20    # burst length ~ U[1, 20] rounds (validated: better coverage)

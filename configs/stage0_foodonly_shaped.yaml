@@ -1,0 +1,45 @@
+# P3.5 Stage-0 sanity run (gate G1) — food-only, with the food-approach bootstrap.
+#
+# Same food-only environment as stage0_foodonly.yaml (one learner, seven
+# `dont_move` seats), but with `food_shaping_coef > 0`: a dense, one-sided bonus
+# for closing distance to the nearest food (see TrainConfig.food_shaping_coef).
+# This turns the sparse "rewarded only at the instant of eating" signal into a
+# dense "move toward food" gradient, so PPO learns food-seeking in a few hundred
+# updates even at the small batch a laptop CPU can sustain — where pure Δmass
+# stalls because random exploration eats too little to bootstrap.
+#
+# The learned *policy* is scored on pure mass (shaping affects the training
+# reward only, never the actions). Judge G1 with:
+#   python -m train.harness.evaluate --weights runs/stage0_foodonly_shaped/checkpoints/ckpt_vNNNNNN.pt \
+#          --opponents dont_move --games 30 --vs-random
+# G1: trained mean final mass >= 3x the random policy in the same field.
+#
+# On the rig, prefer stage0_foodonly.yaml (pure Δmass) with a large num_actors.
+
+name: stage0_foodonly_shaped
+stage: S0-food-only-shaped
+out_dir: runs
+total_updates: 500
+checkpoint_interval_s: 1800
+keep_checkpoints: 5
+log_every: 10
+device: cpu
+
+train:
+  num_actors: 12
+  policy_seats: [0]
+  scripted_names: [dont_move]
+  base_seed: 20260715
+  barrier_timeout_s: 240
+  rollout_len: 32
+  gamma: 0.999
+  gae_lambda: 0.95
+  clip: 0.2
+  value_coef: 0.5
+  entropy_coef: 0.01
+  max_grad_norm: 0.5
+  lr: 0.0005
+  ppo_epochs: 4
+  mass_scale: 1.0
+  reward_clip: 10.0
+  food_shaping_coef: 0.1     # dense food-approach bootstrap (0 = pure Δmass)

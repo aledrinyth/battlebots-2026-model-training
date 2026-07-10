@@ -1,0 +1,49 @@
+# P3.5 Stage-0 sanity run (gate G1) — food-only environment.
+#
+# One learning seat roams a normal arena; the other seven players are scripted
+# `dont_move` (they exist but exert no opponent pressure — the playbook's
+# "food-only environment, no opponents' effects"). The reward is the default
+# dense Δmass, so the only way to score is to find and eat food. G1 asks the
+# trained policy's mean final mass to reach >=3x a random policy in the same
+# field (measure with: train.harness.evaluate --opponents dont_move --vs-random).
+#
+# Launch:   python -m train.harness.run configs/stage0_foodonly.yaml
+# Resume:   (re-run the same command — it continues from the latest checkpoint)
+# Fresh:    python -m train.harness.run configs/stage0_foodonly.yaml --fresh
+#
+# `total_updates` sets a stopping point; override the run length without editing
+# this file via `--updates N` or `--duration SECONDS`. On the B200 rig bump
+# `num_actors` (batch = num_actors * len(policy_seats)) and set device: cuda.
+#
+# This config uses the playbook's pure dense-Δmass reward (food_shaping_coef=0).
+# On the rig's large batch that bootstraps G1 directly. On constrained
+# (laptop-CPU, tiny-batch) hardware, random exploration eats too little food to
+# get a signal, so use `configs/stage0_foodonly_shaped.yaml` instead — it adds a
+# dense food-approach bonus that bootstraps Stage-0 quickly. Both are traceable,
+# distinct experiments (the shaping coef is in the config hash).
+
+name: stage0_foodonly
+stage: S0-food-only
+out_dir: runs
+total_updates: 300
+checkpoint_interval_s: 1800     # 30 min (also always checkpoints at run end)
+keep_checkpoints: 5
+log_every: 10
+device: cpu
+
+train:
+  num_actors: 16
+  policy_seats: [0]             # single food-gathering learner
+  scripted_names: [dont_move]   # the other 7 seats sit still
+  base_seed: 20260715
+  rollout_len: 64
+  gamma: 0.999
+  gae_lambda: 0.95
+  clip: 0.2
+  value_coef: 0.5
+  entropy_coef: 0.01
+  max_grad_norm: 0.5
+  lr: 0.0003
+  ppo_epochs: 2
+  mass_scale: 1.0
+  reward_clip: 10.0
