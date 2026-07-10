@@ -4,11 +4,9 @@ Build the training pipeline around the competition engine, then ship a bot that 
 
 ## Where I'm at
 
-Logging/checkpoint pass. Boring, necessary.
+Two-box path: CPU actors produce shards, learner consumes them and writes weights back. File exchange is easier to debug than a fragile distributed service right now.
 
-Save the effective configuration, seed, versions, and model/optimizer state. A checkpoint I can't resume is just a large souvenir. Need metrics in a form I can inspect without the dashboard being alive.
-
-Also keep the translation test correction in mind: tolerate equivalent row order; don't hide actual value changes.
+Version the shards and weights. Reject stale data beyond the configured limit. Publish finished files atomically, keep retention bounded, and make the worker shut down on error rather than wait forever. Start with a tiny smoke run. Then scale.
 
 ## Running things
 
@@ -18,4 +16,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 12. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This intermediate stage is reconstructed. Git reference: `1dd62ef`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 13. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This intermediate stage is reconstructed. Git reference: `1dd62ef`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
