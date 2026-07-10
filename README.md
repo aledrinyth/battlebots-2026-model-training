@@ -4,9 +4,11 @@ Build the training pipeline around the competition engine, then ship a bot that 
 
 ## Where I'm at
 
-Vectorized seats connected to the learner. Need enough actors to feed batches, but not an ever-growing pile of buffered observations.
+Logging/checkpoint pass. Boring, necessary.
 
-Evaluation: same seeds, repeatable opponent mix. Compare runs on those, not whichever match happened to look good. Watch throughput and actor errors alongside reward. If the learner is idle, adding another layer won't fix it.
+Save the effective configuration, seed, versions, and model/optimizer state. A checkpoint I can't resume is just a large souvenir. Need metrics in a form I can inspect without the dashboard being alive.
+
+Also keep the translation test correction in mind: tolerate equivalent row order; don't hide actual value changes.
 
 ## Running things
 
@@ -16,4 +18,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 11. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This intermediate stage is reconstructed. Git reference: `1dd62ef`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 12. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This intermediate stage is reconstructed. Git reference: `1dd62ef`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
