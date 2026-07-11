@@ -4,11 +4,9 @@ Training pipeline on one side, NumPy match bot on the other. Current focus: make
 
 ## Where I'm at
 
-Initial integrated milestone: export trained weights, run the NumPy policy, check it against the training model. Deployment must stay torch-free.
+Compliance harness added. Measure through the real runner and use its verdict.
 
-The first actual Git commit already contains a lot of work; the earlier folders break it down for this progression. This folder reaches that committed source.
-
-Next is compliance and an actual submission path. A good checkpoint isn't enough if the runner kills the process.
+Need both single-turn and cumulative timing cases. A bot can be fast most of the time and still exceed the game budget. Keep the intentional sleeper fixtures; they're how the harness proves it can catch that failure.
 
 ## Running things
 
@@ -18,4 +16,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 15. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `1dd62ef`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 16. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `c7fe6c2`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
