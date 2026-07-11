@@ -1,4 +1,3 @@
-# Progression annotation (reconstructed): Keep physics in the vendored engine; this layer changes scheduling and observation delivery only.
 """In-process env wrapper (P1.2) — the authoritative Python physics, callable
 in-process at maximum speed, with **no** subprocesses, pipes, pydantic wire
 (de)serialization, or the engine's 0.1 s/round sleep.

@@ -1,4 +1,3 @@
-# Progression annotation (reconstructed): Engine constants are the shared contract: changing them independently breaks training/deployment parity.
 """Canonical game constants — the single source of truth for the whole project.
 
 **Boundary discipline (adaptation-pipeline requirement, P1.1):** no physics or

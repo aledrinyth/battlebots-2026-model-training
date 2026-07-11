@@ -1,4 +1,3 @@
-# Progression annotation (reconstructed): Training and deployment must use the same normalization and entity selection rules.
 """The featurizer (P2.2) — the *one* observation module.
 
 Both the trainer and the shipped bot import ``Featurizer`` from here, so the

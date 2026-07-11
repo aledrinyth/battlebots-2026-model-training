@@ -1,4 +1,3 @@
-# Progression annotation (reconstructed): Deaths terminate a live segment; advantage must not leak across the respawn gap.
 """Trajectory buffer + GAE (P3.2).
 
 A fixed-capacity ``(T, R)`` buffer — ``T = rollout_len`` steps × ``R =
