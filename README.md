@@ -4,9 +4,11 @@ Training pipeline on one side, NumPy match bot on the other. Current focus: make
 
 ## Where I'm at
 
-Compliance harness added. Measure through the real runner and use its verdict.
+Worst-case scene bank now. Average inference speed is the flattering number.
 
-Need both single-turn and cumulative timing cases. A bot can be fast most of the time and still exceed the game budget. Keep the intentional sleeper fixtures; they're how the harness proves it can catch that failure.
+Try dense visibility, lots of blobs, awkward frames. Time the actual bot path, including feature work. Random fixture weights are for correctness/timing checks, not a competitive champion.
+
+Keep timing tests out of a noisy pile of simultaneous benchmarks when investigating a failure.
 
 ## Running things
 
@@ -16,4 +18,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 16. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `c7fe6c2`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 17. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `25151ef`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
