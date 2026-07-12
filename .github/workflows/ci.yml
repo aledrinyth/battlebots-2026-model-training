@@ -4,6 +4,8 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "0 15 * * *"  # nightly ~01:00 AEST — adds the P4.4 full compliance gate
 
 jobs:
   ci:
@@ -28,5 +30,9 @@ jobs:
       - name: Build wasm module (gate G0)
         run: make wasm
 
-      - name: CI gate — import-linter + tests + vendored engine suite
+      - name: CI gate — import-linter + tests + vendored engine suite + compliance smoke
         run: make ci-full
+
+      - name: Nightly — P4.4 full compliance (10 full-length games, all checks)
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: make compliance-full

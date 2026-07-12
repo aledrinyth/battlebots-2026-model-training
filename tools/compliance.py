@@ -141,6 +141,7 @@ def run_game(
     seed: int = 0,
     rounds: int | None = None,
     start_delay: float = 0.0,
+    quiet: bool = True,
 ) -> dict:
     """One instrumented game. Returns the raw capture (no thresholds applied).
 
@@ -274,10 +275,16 @@ def run_game(
 
             random.seed(seed)
             engine_start_ts = perf_counter()
-            game = _ge.GameEngine()
-            if rounds is not None:
-                game.state.max_rounds = rounds
-            game.start()
+            # The engine prints one line per round; swallow it (a 10-game full
+            # run would spam 14k lines into CI logs) unless quiet=False.
+            import contextlib, io
+            sink = io.StringIO() if quiet else None
+            with (contextlib.redirect_stdout(sink) if sink
+                  else contextlib.nullcontext()):
+                game = _ge.GameEngine()
+                if rounds is not None:
+                    game.state.max_rounds = rounds
+                game.start()
 
             _snap_rss("end")
             for pid, p in game.state.players.items():

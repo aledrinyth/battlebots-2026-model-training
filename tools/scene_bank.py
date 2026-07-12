@@ -456,7 +456,7 @@ def main() -> None:
     r = sub.add_parser("replay", help="time the bot path over the bank")
     r.add_argument("--bank", type=Path, default=BANK_PATH)
     r.add_argument("--weights", type=Path, default=WEIGHTS_PATH)
-    r.add_argument("--reps", type=int, default=4)
+    r.add_argument("--reps", type=int, default=15)
     args = ap.parse_args()
 
     if args.cmd == "generate":
