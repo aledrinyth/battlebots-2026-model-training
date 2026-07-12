@@ -4,9 +4,9 @@ Training pipeline on one side, NumPy match bot on the other. Current focus: make
 
 ## Where I'm at
 
-Compliance wired into CI. Quick smoke locally, full gate before a real submission.
+Phase-four checkpoint. Compliance pieces are in; leave the next run focused on the main loop and packaging.
 
-Run `make ci` in the bot environment. Full runner checks are slower; budget time for them. Build artifact first, gate that artifact. Testing the source and then shipping some different generated file is an easy way to fool myself.
+Open items: weight resolution, startup behavior, and the time ledger. Keep this short. The code hasn't gained a new controller in this step.
 
 ## Running things
 
@@ -16,4 +16,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 19. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `d9fd0ad`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 20. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `0617248`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
