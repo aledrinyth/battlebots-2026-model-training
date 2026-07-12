@@ -4,11 +4,9 @@ Training pipeline on one side, NumPy match bot on the other. Current focus: make
 
 ## Where I'm at
 
-Worst-case scene bank now. Average inference speed is the flattering number.
+Bundle scan + safe fallback. Malformed input shouldn't turn one bad observation into a dead process.
 
-Try dense visibility, lots of blobs, awkward frames. Time the actual bot path, including feature work. Random fixture weights are for correctness/timing checks, not a competitive champion.
-
-Keep timing tests out of a noisy pile of simultaneous benchmarks when investigating a failure.
+Scan forbidden imports before shipping. Fuzz the guarded turn. If the neural path fails, return the legal fallback and let the match continue. Don't swallow problems during training just because the deployed bot has to survive them.
 
 ## Running things
 
@@ -18,4 +16,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 17. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `25151ef`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 18. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `5b99d7e`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
