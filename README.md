@@ -4,9 +4,11 @@ Training pipeline on one side, NumPy match bot on the other. Current focus: make
 
 ## Where I'm at
 
-Phase-four checkpoint. Compliance pieces are in; leave the next run focused on the main loop and packaging.
+Record the stage-zero champion before losing track of which checkpoint was which.
 
-Open items: weight resolution, startup behavior, and the time ledger. Keep this short. The code hasn't gained a new controller in this step.
+The original record names `g1_rig_bcft`, `ckpt_v000123`, and a 13.1x result. That's a historical recorded result, not a fresh benchmark of this folder. Keep the identifier useful; don't turn it into a promise about every opponent field.
+
+Main loop next.
 
 ## Running things
 
@@ -16,4 +18,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 20. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `0617248`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 21. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `e66f823`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
