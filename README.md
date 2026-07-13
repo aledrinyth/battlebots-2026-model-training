@@ -4,11 +4,11 @@ Training pipeline on one side, NumPy match bot on the other. Current focus: make
 
 ## Where I'm at
 
-Record the stage-zero champion before losing track of which checkpoint was which.
+Real bot entry point now. Query in, guarded NumPy turn, move out.
 
-The original record names `g1_rig_bcft`, `ckpt_v000123`, and a 13.1x result. That's a historical recorded result, not a fresh benchmark of this folder. Keep the identifier useful; don't turn it into a promise about every opponent field.
+Weight lookup must be predictable: explicit override, packaged weights, then fixture fallback for development. Keep recurrent state between turns, reset where the game contract needs it. Track elapsed time; startup and feature work count too.
 
-Main loop next.
+Need to test through the protocol, not only call `act()` in a unit test.
 
 ## Running things
 
@@ -18,4 +18,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 21. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `e66f823`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 22. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `2b5de80`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.

@@ -97,6 +97,7 @@ class PlayerCapture:
     spawn_to_open_s: float = float("nan")  # import+init upper bound
     final_cumulative_s: float = 0.0
     rss_kb: dict[str, int] = field(default_factory=dict)  # "start"/"mid"/"end"
+    stderr_tail: str = ""  # last few KB of the bot's stderr (ledger, resets)
 
 
 def _sample_rss_kb(pids: list[int]) -> dict[int, int]:
@@ -319,6 +320,12 @@ def run_game(
             try:
                 proc.wait(timeout=5)
             except Exception:
+                pass
+        for pid in players:
+            err = ws / f"submission{pid}" / "io" / "submission.err"
+            try:
+                players[pid].stderr_tail = err.read_text()[-4096:]
+            except OSError:
                 pass
         shutil.rmtree(ws, ignore_errors=True)
 

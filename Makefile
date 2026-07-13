@@ -13,9 +13,10 @@ LINTER ?= $(dir $(PY))lint-imports
 .DEFAULT_GOAL := help
 .PHONY: help ci ci-full lint test test-kit wasm venvs compliance-smoke compliance-full
 
-# The seat under compliance test. Until P5.5 packages the real bot this is the
-# strongest scripted stand-in; point it at the bundle's main.py when it exists.
-COMPLIANCE_BOT ?= tests/fixtures/bots/greedy.py
+# The seat under compliance test: the real entry point (P5.4). Weights resolve
+# via $BOT_WEIGHTS -> alongside main.py -> the repo's random-init fixture.
+# Point at the packaged bundle's main.py to gate a P5.5 bundle instead.
+COMPLIANCE_BOT ?= bot/main.py
 FILLER_BOT     ?= tests/fixtures/bots/dont_move.py
 
 help:
