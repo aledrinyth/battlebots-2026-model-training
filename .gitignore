@@ -39,3 +39,6 @@ app1.log
 
 # Replay ingestion inbox (v3 pipeline input — large JSONs, not code)
 match_replays/
+
+# Packaged submission bundles (P5.5 output; registry.json carries provenance)
+dist/

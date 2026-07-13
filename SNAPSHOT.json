@@ -1,34 +1,33 @@
 {
-  "title": "P5.4: bot main loop \u2014 kit wire framing + guarded NNUE turn + time ledger",
+  "title": "P5.5: packager v0 \u2014 repo -> self-contained gated bundle. Phase 5 complete.",
   "purpose": "Preserve this actual Git milestone and its exact committed project files.",
   "kind": "git-anchor",
-  "ref": "2b5de806c570f1289a3ada8b2962bd05cb8764a2",
-  "date": "2026-07-16T14:40:08+10:00",
+  "ref": "3b302b915f513b41e16b5a4f3dbe6cb5c2ceaa30",
+  "date": "2026-07-16T14:50:03+10:00",
   "pin": "c62e89d7d9f505a1c711248fe0429ba555c28323",
-  "number": 22,
-  "folder": "22-p5-4-bot-main-loop-kit-wire-framing-guarded-nnue-turn-time-ledger",
-  "file_count": 212,
-  "bytes": 9202527,
+  "number": 23,
+  "folder": "23-p5-5-packager-v0-repo-self-contained-gated-bundle-phase-5-complete",
+  "file_count": 214,
+  "bytes": 9210801,
   "delta": {
     "added": [
-      "bot/main.py",
-      "tests/test_bot_main.py"
+      "tests/test_package.py",
+      "tools/package.py"
     ],
     "modified": [
-      "Makefile",
-      "README.md",
-      "tools/compliance.py"
+      ".gitignore",
+      "README.md"
     ],
     "deleted": []
   },
   "documentation": "single editorial README; original notes and Markdown removed",
   "sha256": {
     ".github/workflows/ci.yml": "5376b856f845cc2130a3c4580a28ba291b4afbf3dadab75dda3d96899f69df33",
-    ".gitignore": "ab0ade641b5c63412d53142a824248f539089a364fdfb70df26adb673dfd2c6f",
+    ".gitignore": "814d55e3c9dc9ae97883027099bef1850d1a30bbf6806056281c309ca53309d2",
     ".gitmodules": "95d27a8955c417ff58e5bb98f046d21c274e41e80bc63469ee84dc87514dc552",
     ".importlinter": "13eba475bac0e0eabc2c648091c9538610b941a90768aa40aa58b8e5092d644d",
     "Makefile": "12b0b98f58164fd08198592b72cca39fc0aa7254546cebfc441bf000d1b96d18",
-    "README.md": "93b41324bbaafa6c1b442d4c723fb092b5ae14e2713a95b01d0a91db7f6d64b6",
+    "README.md": "031737f1ee57f9bef23f9ed423cf07587b0f6d6d9cc95339065018e01608e98a",
     "bot/__init__.py": "8bca39ff827db2a23436c6a22161eecf117be1359e8c711285474c0614e9ec1d",
     "bot/adapters/__init__.py": "22fbc6aa26988c5e26f226b8cbc284d2b189ab389baeacf41c11f8fc82b5d7da",
     "bot/adapters/act_v1.py": "f95d6cd7b69fb7178e93e84bdaefbf43bc19576b7744a2b32c3d2ca45045e47b",
@@ -87,6 +86,7 @@
     "tests/test_inference_parity.py": "946a78ab923ec6499ad6e16c9e3335f51cb4496f7c0c435d4b290f890413ead0",
     "tests/test_model.py": "ec494ade591773d5eda98155dba04f886d6061cefbfb18d5235afa1b01e76d57",
     "tests/test_opponents.py": "ab37897ccc7ce0bac3de683bbd3625014bb49fd12e14cde828476e1c5317f156",
+    "tests/test_package.py": "0fa877758b6a7e9c4399fa972eb4cc6277d66997b5cb6a6caeefcd36a860bb77",
     "tests/test_ppo_learn.py": "c38f4d4682b60b49b219576e9def4841884a983f1465dfc662f1cc9abe1f4133",
     "tests/test_protocol_survival.py": "a1f9041cfe3e0398c26adc56f5398d08737cc46a32d94ccb0ba64f0db8da3b4f",
     "tests/test_reference_fixtures.py": "659d99c73714ac9bc0d43809e6afee8625efa01008a30eb6f612b12f8f7807f2",
@@ -105,6 +105,7 @@
     "tools/bench_env.py": "87fd5adc1657de810eded19ef15d94d3c71e1a6b40d3d8731dda23fd54789413",
     "tools/bundle_scan.py": "9d88ff160748231ca1fc9c0bf7bc926f3c6d21f05074a7fe560d95a386d5dfad",
     "tools/compliance.py": "a7ed18dff3e254f19de6dd8b67bcb3e70fcf5e354f1d86adcbe5b62962c23281",
+    "tools/package.py": "c356f929fc7c4627561801d229829a910b1056fca78b77221727731496f7e435",
     "tools/probe_food_capacity.py": "e73aba4a970eb62f5f326227fac644be23b2fd35757a413e927a9db4cab850a2",
     "tools/record_reference_match.py": "4eed484461a9c7f281b6780ffd7060fa4c92fa86c1f81c4b7b73bc3783cc0163",
     "tools/run_reference_match.sh": "6e578f315bceac864c49fe32e1004e250af745024c3ef3d7bc477f4bfafa755e",

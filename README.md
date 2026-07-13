@@ -4,11 +4,11 @@ Training pipeline on one side, NumPy match bot on the other. Current focus: make
 
 ## Where I'm at
 
-Real bot entry point now. Query in, guarded NumPy turn, move out.
+Packager exists. Build a self-contained bundle with its weights and provenance.
 
-Weight lookup must be predictable: explicit override, packaged weights, then fixture fallback for development. Keep recurrent state between turns, reset where the game contract needs it. Track elapsed time; startup and feature work count too.
+Don't hand-copy modules and hope they match. Scan and gate the assembled output. Random-init bundle is for a smoke run. Champion bundle needs the actual exported checkpoint.
 
-Need to test through the protocol, not only call `act()` in a unit test.
+Still need to check what the portal accepts. A directory working locally doesn't establish the upload format.
 
 ## Running things
 
@@ -18,4 +18,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 22. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `2b5de80`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 23. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `3b302b9`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
