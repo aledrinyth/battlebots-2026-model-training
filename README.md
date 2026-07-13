@@ -4,11 +4,9 @@ Training pipeline on one side, NumPy match bot on the other. Current focus: make
 
 ## Where I'm at
 
-Packager exists. Build a self-contained bundle with its weights and provenance.
+Scripted subject mode for evaluation. Useful to measure the acceptance anchors themselves, rather than assume they're fixed yardsticks.
 
-Don't hand-copy modules and hope they match. Scan and gate the assembled output. Random-init bundle is for a smoke run. Champion bundle needs the actual exported checkpoint.
-
-Still need to check what the portal accepts. A directory working locally doesn't establish the upload format.
+Same seat treatment and seeds as a learned subject. This should make comparisons easier to read. No new training trick here.
 
 ## Running things
 
@@ -18,4 +16,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 23. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `3b302b9`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 24. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `894dd11`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.

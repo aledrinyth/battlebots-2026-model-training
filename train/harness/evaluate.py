@@ -97,49 +97,66 @@ class EvalResult:
         )
 
 
-def _play_games(policy: torch.nn.Module, opponents: Sequence[str],
-                indices: Iterable[int], device: str,
-                base_seed: int) -> List[Tuple[int, int, float]]:
+def _play_games(policy: Optional[torch.nn.Module], opponents: Sequence[str],
+                indices: Iterable[int], device: str, base_seed: int,
+                scripted_subject: Optional[str] = None) -> List[Tuple[int, int, float]]:
     """Play the given game indices; return ``[(g, rank, final_mass), …]``.
 
     Game ``g`` is fully determined by ``(base_seed + g, g % 8)``, so any
     partition of indices across processes reproduces the sequential results.
+
+    ``scripted_subject`` seats a scripted bot in the subject seat instead of
+    the policy (all 8 seats scripted) — the anchor measurement: e.g.
+    greedy_food's *own* mean rank in the exact field a trained policy is
+    scored against. Same seeds, same seat rotation, same opponent cycling, so
+    the number is directly comparable to a ``--weights`` run.
     """
     dev = torch.device(device)
     out: List[Tuple[int, int, float]] = []
     with torch.no_grad():
         for g in indices:
-            policy_seat = g % 8  # rotate seat for fairness
-            scripted = {pid: make_bot(name) for pid, name in _opponent_assignment(policy_seat, opponents).items()}
-            actor = Actor(seed=base_seed + g, policy_seats={policy_seat}, scripted=scripted, emit_update=False)
-            actor.reset()
-            hidden = torch.zeros(1, policy.hidden_size, device=dev)
+            subject_seat = g % 8  # rotate seat for fairness
+            scripted = {pid: make_bot(name) for pid, name in _opponent_assignment(subject_seat, opponents).items()}
+            if scripted_subject is not None:
+                scripted[subject_seat] = make_bot(scripted_subject)
+                actor = Actor(seed=base_seed + g, policy_seats=(),
+                              scripted=scripted, emit_update=False)
+                actor.reset()
+                done = False
+                while not done:
+                    done = actor.step({})  # every seat is scripted
+            else:
+                actor = Actor(seed=base_seed + g, policy_seats={subject_seat}, scripted=scripted, emit_update=False)
+                actor.reset()
+                hidden = torch.zeros(1, policy.hidden_size, device=dev)
 
-            done = False
-            while not done:
-                obs = actor.observe()  # {policy_seat: CanonicalObs} if alive, else {}
-                if policy_seat in obs:
-                    co = obs[policy_seat]
-                    if co.is_reset:
-                        hidden = torch.zeros_like(hidden)
-                    batched = collate_obs([co], device=dev)
-                    hl, sl, _v, hidden = policy(batched, hidden)
-                    action = decode_logits(hl[0].cpu().tolist(), float(sl[0].cpu()), 0.0)  # greedy
-                    done = actor.step({policy_seat: action})
-                else:
-                    done = actor.step({})  # policy seat dead this round; scripted seats act
+                done = False
+                while not done:
+                    obs = actor.observe()  # {subject_seat: CanonicalObs} if alive, else {}
+                    if subject_seat in obs:
+                        co = obs[subject_seat]
+                        if co.is_reset:
+                            hidden = torch.zeros_like(hidden)
+                        batched = collate_obs([co], device=dev)
+                        hl, sl, _v, hidden = policy(batched, hidden)
+                        action = decode_logits(hl[0].cpu().tolist(), float(sl[0].cpu()), 0.0)  # greedy
+                        done = actor.step({subject_seat: action})
+                    else:
+                        done = actor.step({})  # subject seat dead this round; scripted seats act
 
-            rank = actor.rankings().index(policy_seat) + 1
-            out.append((g, rank, float(actor.final_masses()[policy_seat])))
+            rank = actor.rankings().index(subject_seat) + 1
+            out.append((g, rank, float(actor.final_masses()[subject_seat])))
     return out
 
 
 def _mp_play(args) -> List[Tuple[int, int, float]]:
     """Worker entry (spawn): load the policy once, play a strided slice of games."""
-    weights_path, opponents, indices, device, base_seed = args
+    weights_path, opponents, indices, device, base_seed, scripted_subject = args
     torch.set_num_threads(1)  # one game at a time per worker; don't oversubscribe
-    policy = _load_policy(weights_path, torch.device(device), seed=base_seed)
-    return _play_games(policy, opponents, indices, device, base_seed)
+    policy = (None if scripted_subject is not None
+              else _load_policy(weights_path, torch.device(device), seed=base_seed))
+    return _play_games(policy, opponents, indices, device, base_seed,
+                       scripted_subject=scripted_subject)
 
 
 def _strided_chunks(n: int, workers: int) -> List[List[int]]:
@@ -155,22 +172,31 @@ def evaluate(
     device: str = "cpu",
     base_seed: int = 999_983,
     workers: int = 1,
+    scripted_subject: Optional[str] = None,
 ) -> EvalResult:
-    """Play ``n_games`` and score the (single) policy seat's finishing position.
+    """Play ``n_games`` and score the subject seat's finishing position.
+
+    The subject is the trained policy at ``weights_path`` — or, with
+    ``scripted_subject``, a named scripted bot (the acceptance-anchor mode:
+    same seeds/seats/field, so its rank is directly comparable).
 
     ``workers > 1`` fans the games out over that many processes (games are
     independent and seeded per-index, so the results are identical to the
     sequential run — only wall-clock changes).
     """
+    if scripted_subject is not None and weights_path is not None:
+        raise ValueError("pass either weights_path or scripted_subject, not both")
     if workers > 1 and n_games > 1:
         ctx = mp.get_context("spawn")
-        jobs = [(weights_path, tuple(opponents), chunk, device, base_seed)
+        jobs = [(weights_path, tuple(opponents), chunk, device, base_seed, scripted_subject)
                 for chunk in _strided_chunks(n_games, workers)]
         with ctx.Pool(len(jobs)) as pool:
             played = [row for rows in pool.map(_mp_play, jobs) for row in rows]
     else:
-        policy = _load_policy(weights_path, torch.device(device), seed=base_seed)
-        played = _play_games(policy, opponents, range(n_games), device, base_seed)
+        policy = (None if scripted_subject is not None
+                  else _load_policy(weights_path, torch.device(device), seed=base_seed))
+        played = _play_games(policy, opponents, range(n_games), device, base_seed,
+                             scripted_subject=scripted_subject)
 
     played.sort()  # by game index — order-independent of worker count
     ranks = [r for _g, r, _m in played]
@@ -200,11 +226,21 @@ def _main() -> None:
                         "~N× faster; keep a few cores free if training is running)")
     p.add_argument("--vs-random", action="store_true",
                    help="also run a random policy in the same games and print the mass ratio (the G1 bar)")
+    p.add_argument("--scripted-subject", default=None,
+                   help="seat a scripted bot (e.g. greedy_food) as the subject instead of "
+                        "a policy — the acceptance anchor: its own mean rank in this exact "
+                        "field, same seeds and seat rotation. Mutually exclusive with --weights")
     args = p.parse_args()
 
+    if args.scripted_subject and args.weights:
+        p.error("--scripted-subject and --weights are mutually exclusive")
+
     res = evaluate(args.weights, tuple(args.opponents), args.games, args.device,
-                   workers=args.workers)
-    print("TRAINED:" if args.weights else "RANDOM (no --weights given):")
+                   workers=args.workers, scripted_subject=args.scripted_subject)
+    if args.scripted_subject:
+        print(f"SCRIPTED SUBJECT '{args.scripted_subject}':")
+    else:
+        print("TRAINED:" if args.weights else "RANDOM (no --weights given):")
     print(res.summary())
 
     if args.vs_random and args.weights:

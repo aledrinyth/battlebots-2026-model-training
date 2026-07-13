@@ -39,3 +39,25 @@ def test_workers_do_not_change_results():
     par = evaluate(None, opponents=("dont_move",), n_games=2, workers=2)
     assert seq.mean_final_mass == par.mean_final_mass
     assert seq.rank_hist == par.rank_hist
+
+
+def test_scripted_subject_excludes_weights():
+    with pytest.raises(ValueError, match="not both"):
+        evaluate("some_weights.pt", n_games=1, scripted_subject="greedy_food")
+
+
+@pytest.mark.slow
+def test_scripted_subject_plays_and_is_worker_invariant():
+    """The anchor mode: a scripted bot in the subject seat, no policy at all.
+
+    greedy_food in a dont_move field must eat its way to rank 1 in both the
+    sequential and parallel paths, with identical results (same seeds/seats).
+    """
+    seq = evaluate(None, opponents=("dont_move",), n_games=2, workers=1,
+                   scripted_subject="greedy_food")
+    par = evaluate(None, opponents=("dont_move",), n_games=2, workers=2,
+                   scripted_subject="greedy_food")
+    assert seq.mean_final_mass == par.mean_final_mass
+    assert seq.rank_hist == par.rank_hist
+    assert seq.mean_rank == 1.0  # the only eater in a stationary field
+    assert seq.mean_final_mass > 3.0  # it actually grew
