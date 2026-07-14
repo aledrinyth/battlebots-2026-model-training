@@ -1,20 +1,20 @@
 {
-  "title": "evaluate: --scripted-subject \u2014 acceptance-anchor mode",
+  "title": "configs: stage1_bcft \u2014 S1 second cut, BC(cautious) -> PPO",
   "purpose": "Preserve this actual Git milestone and its exact committed project files.",
   "kind": "git-anchor",
-  "ref": "894dd11b89a03368e46f8e03f63711d5fa3d018f",
-  "date": "2026-07-16T17:26:43+10:00",
+  "ref": "86561c320250c923394ef2d136c7b073f6e8be7f",
+  "date": "2026-07-17T01:54:09+10:00",
   "pin": "c62e89d7d9f505a1c711248fe0429ba555c28323",
-  "number": 24,
-  "folder": "24-evaluate-scripted-subject-acceptance-anchor-mode",
-  "file_count": 214,
-  "bytes": 9213867,
+  "number": 25,
+  "folder": "25-configs-stage1-bcft-s1-second-cut-bc-cautious-ppo",
+  "file_count": 215,
+  "bytes": 9217444,
   "delta": {
-    "added": [],
+    "added": [
+      "configs/stage1_bcft.yaml"
+    ],
     "modified": [
-      "README.md",
-      "tests/test_evaluate_parallel.py",
-      "train/harness/evaluate.py"
+      "README.md"
     ],
     "deleted": []
   },
@@ -25,7 +25,7 @@
     ".gitmodules": "95d27a8955c417ff58e5bb98f046d21c274e41e80bc63469ee84dc87514dc552",
     ".importlinter": "13eba475bac0e0eabc2c648091c9538610b941a90768aa40aa58b8e5092d644d",
     "Makefile": "12b0b98f58164fd08198592b72cca39fc0aa7254546cebfc441bf000d1b96d18",
-    "README.md": "7d8be58519913d542d49628fe3e7456a9834e004557941de99e40b7121d6093b",
+    "README.md": "abfb034856391d33706943ddb246d6fd92f2f6aaed4c3839b3ffd8432c0436c4",
     "bot/__init__.py": "8bca39ff827db2a23436c6a22161eecf117be1359e8c711285474c0614e9ec1d",
     "bot/adapters/__init__.py": "22fbc6aa26988c5e26f226b8cbc284d2b189ab389baeacf41c11f8fc82b5d7da",
     "bot/adapters/act_v1.py": "f95d6cd7b69fb7178e93e84bdaefbf43bc19576b7744a2b32c3d2ca45045e47b",
@@ -41,6 +41,7 @@
     "configs/stage0_foodonly_rig_ms4.yaml": "915a4077b8b5f41471dbea6126821e56d128bd293bf69580d7afb74ecfed962b",
     "configs/stage0_foodonly_rig_oracle.yaml": "0971d58086d12f193828e1dcf1a995d9179d5c5cdc84f229775f0442938d36bc",
     "configs/stage0_foodonly_shaped.yaml": "bf56504f99809e8d389d046461dd0617efc93ab023db9cc90b65f1411a6e5e58",
+    "configs/stage1_bcft.yaml": "673092574073deaa4ccf7ae1d606f6c4074100996eb9928e2b18a0f70929bc45",
     "configs/stage1_mixed.yaml": "12e186fa7e3aa44704393e521ec2383002ec26c9800be6bfe02d2e1ade087f1c",
     "progression_examples/row_comparison.py": "4877b0dc13bf659a97270fb9dee9e42cd349d76a719d07ea27e237fb3826bf85",
     "progression_examples/visibility.py": "60d9d2cf3705986ecd3a2893cb8b43eb5c35ba3b2fff0952355654da9f2380a9",

@@ -1,0 +1,78 @@
+# P6.1 Stage-1, SECOND CUT — BC(cautious) warm-start -> PPO fine-tune.
+#
+# The first cut (stage1_mixed: PPO straight from the S0 champion) FAILED its
+# acceptance: mean rank oscillated 5.0-5.8 over ~1800 updates while eval mass
+# decayed 3.4 -> 1.3 — the policy traded top-end results for fewer rank-8
+# finishes (death-avoidance learned as timidity, not evasion). Same
+# credit-assignment wall as Stage 0: a -body death spike can't teach "dodge".
+#
+# Anchors (2026-07-17, 200 games each via evaluate --scripted-subject, same
+# seeds/field as checkpoint evals — the acceptance bar, measured at last):
+#   greedy_food: mean_rank 4.91  win  2.5%  top_half 43%  mass  3.08
+#   cautious:    mean_rank 3.42  win 23.5%  top_half 70%  mass 12.91
+# cautious DOMINATES this field (flee-bigger / chase-smaller / else-food):
+# 4x greedy's mass — predation, not just survival. So the Track-D recipe that
+# closed G1 applies with cautious as the expert:
+#
+#   1. demos (box, ~15 min — note the reported quantized-expert score = BC ceiling):
+#      python -m train.harness.demos --expert cautious \
+#        --opponents greedy_food cautious chaser coward \
+#        --games 300 --out data/demos_cautious_mixed.npz
+#   2. BC (S0 lesson: epochs matter — 60, not 3):
+#      python -m train.bc --data data/demos_cautious_mixed.npz \
+#        --epochs 60 --out data/bc_cautious_mixed_e60.pt
+#   3. GATE the BC clone before burning PPO hours (want ~<=4.3 rank, i.e.
+#      cautious's 3.42 + cloning loss; if ~5, it is undertrained — check the
+#      val-acc trend before concluding anything else):
+#      python -m train.harness.evaluate --weights data/bc_cautious_mixed_e60.pt \
+#        --opponents greedy_food cautious chaser coward dont_move \
+#        --games 200 --workers 16
+#   4. PPO fine-tune (this config):
+#      mkdir -p runs/stage1_bcft
+#      TRAIN_TORCH_THREADS=16 tmux new -s s1bcft 'python -m train.harness.run \
+#        configs/stage1_bcft.yaml --init-weights data/bc_cautious_mixed_e60.pt \
+#        --duration 21600 2>&1 | tee -a runs/stage1_bcft/console.log'
+#
+# Training knobs are IDENTICAL to stage1_mixed (the S0-proven fine-tune
+# regime: lr 1e-4, ent 0.003, no crutches; reward_clip stays 10.0 — from a
+# cautious clone, death-avoidance gradients reinforce existing flee behavior
+# instead of inventing timidity). First fallback if eval mass shrinks again:
+# reward_clip 3.0 to soften the death spike relative to eat rewards.
+#
+# Acceptance (playbook P6.1, bar now measured): mean_rank clearly < 4.5 AND
+# better than greedy_food's 4.91 over 200 games:
+#   python -m train.harness.evaluate \
+#     --weights runs/stage1_bcft/checkpoints/ckpt_v<N>.pt \
+#     --opponents greedy_food cautious chaser coward dont_move \
+#     --games 200 --workers 16
+
+name: stage1_bcft
+stage: S1-mixed-opponents
+out_dir: runs
+total_updates: 0            # bounded by --duration
+duration_s: 0
+checkpoint_interval_s: 300
+keep_checkpoints: 100
+log_every: 20
+device: cpu
+
+train:
+  num_actors: 124           # batch = num_actors * 4; set to ~(cores - 4)
+  policy_seats: [0, 1, 2, 3]
+  scripted_names: [greedy_food, cautious, chaser, coward]
+  base_seed: 20260719
+  barrier_timeout_s: 300
+  rollout_len: 32
+  gamma: 0.999
+  gae_lambda: 0.95
+  clip: 0.2
+  value_coef: 0.5
+  entropy_coef: 0.003        # keep the peaked policy; opponents supply variety
+  max_grad_norm: 0.5
+  lr: 0.0001                 # fine-tune regime (fresh critic vs new opponents)
+  ppo_epochs: 2
+  mass_scale: 1.0
+  reward_clip: 10.0
+  food_shaping_coef: 0.0
+  explore_persist_prob: 0.0
+  explore_oracle_prob: 0.0

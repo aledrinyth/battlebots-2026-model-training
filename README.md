@@ -4,9 +4,9 @@ Training pipeline on one side, NumPy match bot on the other. Current focus: make
 
 ## Where I'm at
 
-Scripted subject mode for evaluation. Useful to measure the acceptance anchors themselves, rather than assume they're fixed yardsticks.
+S1 second cut: cautious demonstrations into BC, then PPO.
 
-Same seat treatment and seeds as a learned subject. This should make comparisons easier to read. No new training trick here.
+Try this before another expensive architecture change. Track the starting checkpoint and effective config. If it fails, keep the failure visible; don't merge its curve into a better run's story.
 
 ## Running things
 
@@ -16,4 +16,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 24. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `894dd11`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 25. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `86561c3`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
