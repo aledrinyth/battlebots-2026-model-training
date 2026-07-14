@@ -1,29 +1,22 @@
 {
-  "title": "P6.1: food-density domain randomization \u2014 training-only, hash-inert",
+  "title": "P6.2: league manager \u2014 snapshot pool + PFSP sampling + frozen seats",
   "purpose": "Preserve this actual Git milestone and its exact committed project files.",
   "kind": "git-anchor",
-  "ref": "f944ff7da43dd4a0a6745db63a49ccf55374bd9c",
-  "date": "2026-07-17T02:26:44+10:00",
+  "ref": "33279cfa48c688b97f353dea7e90dd95be9edf98",
+  "date": "2026-07-17T03:49:23+10:00",
   "pin": "c62e89d7d9f505a1c711248fe0429ba555c28323",
-  "number": 27,
-  "folder": "27-p6-1-food-density-domain-randomization-training-only-hash-inert",
-  "file_count": 217,
-  "bytes": 9229500,
+  "number": 28,
+  "folder": "28-p6-2-league-manager-snapshot-pool-pfsp-sampling-frozen-seats",
+  "file_count": 220,
+  "bytes": 9245083,
   "delta": {
     "added": [
-      "tests/test_domain_rand.py",
-      "train/env/domain_rand.py"
+      "tests/test_league.py",
+      "train/league.py",
+      "train/opponents/frozen.py"
     ],
     "modified": [
-      "README.md",
-      "train/env/wrapper.py",
-      "train/harness/actor.py",
-      "train/harness/config.py",
-      "train/harness/game_runner.py",
-      "train/harness/learner.py",
-      "train/harness/provenance.py",
-      "train/harness/rollout_worker.py",
-      "train/harness/vec_actor.py"
+      "README.md"
     ],
     "deleted": []
   },
@@ -34,7 +27,7 @@
     ".gitmodules": "95d27a8955c417ff58e5bb98f046d21c274e41e80bc63469ee84dc87514dc552",
     ".importlinter": "13eba475bac0e0eabc2c648091c9538610b941a90768aa40aa58b8e5092d644d",
     "Makefile": "12b0b98f58164fd08198592b72cca39fc0aa7254546cebfc441bf000d1b96d18",
-    "README.md": "84d6fea6e804ecf9d88654477de349d7aa2b6703494859b6074bbd3e78412987",
+    "README.md": "eb38b4676ef183fda9c1b2afead620c9fcc05d3f0c65c5885836e2ecac8a9634",
     "bot/__init__.py": "8bca39ff827db2a23436c6a22161eecf117be1359e8c711285474c0614e9ec1d",
     "bot/adapters/__init__.py": "22fbc6aa26988c5e26f226b8cbc284d2b189ab389baeacf41c11f8fc82b5d7da",
     "bot/adapters/act_v1.py": "f95d6cd7b69fb7178e93e84bdaefbf43bc19576b7744a2b32c3d2ca45045e47b",
@@ -93,6 +86,7 @@
     "tests/test_food_shaping.py": "199b48bedd736fabdc50ef03c92da680f97802c2240d61bb1cddf8db7bdf3c02",
     "tests/test_greedy_bot.py": "fb5e440a2d374f7d86bd6488249f6f31c7356943c7f357cf10d05acfca116752",
     "tests/test_inference_parity.py": "946a78ab923ec6499ad6e16c9e3335f51cb4496f7c0c435d4b290f890413ead0",
+    "tests/test_league.py": "cd0dd116f57d6ffa4795b13fa46939a3abc7f78ce11282fb1bd0ff79dc204dd9",
     "tests/test_model.py": "ec494ade591773d5eda98155dba04f886d6061cefbfb18d5235afa1b01e76d57",
     "tests/test_opponents.py": "ab37897ccc7ce0bac3de683bbd3625014bb49fd12e14cde828476e1c5317f156",
     "tests/test_package.py": "0fa877758b6a7e9c4399fa972eb4cc6277d66997b5cb6a6caeefcd36a860bb77",
@@ -146,8 +140,10 @@
     "train/harness/skeleton.py": "6ab5090f3495d6cb100ef62eb16d2676943dea83f52bdcca92dc3caccf934ab6",
     "train/harness/trainer.py": "c3446a26a820d72ceeb00365d837eef3ed3badbb513e89fb711973864751f0a5",
     "train/harness/vec_actor.py": "93b6cfaa0117c2f9cf0ab03829d29df341b920ec6b9920c631b88073b64dc474",
+    "train/league.py": "d4540b9afd93e105676655385cc9cefacfaef5b6175c68376745eaf7db11a93d",
     "train/model.py": "bc3fa833bdc3fc1b2e0a75dfa9be8b16a26a3ccb8cd8249e972a4c9ec9846261",
     "train/opponents/__init__.py": "2ff5c9bc992a71c61aab04df6201e20aab684fc0e731ae8d1a5d5cd07dd94697",
+    "train/opponents/frozen.py": "37167ec814112e852c8bb5ff4413e8c0ecf2efb717c5ea213abd7b1b5c3b06d2",
     "train/opponents/scripted.py": "5501bf79a8c5d4e2ab5fae44a861e941952fd79d53025bf9635fb5456d1cd478",
     "train/ppo.py": "7947fbba4443ca2be81fd591d0ce0bc6c016bbeea8ed5f14a87c542cf280317a",
     "v2/wasm/add.wat": "73f10333f5764c3233a002d818892cccc4c5b350db48f68926242b1213691f99",

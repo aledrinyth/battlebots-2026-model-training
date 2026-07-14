@@ -4,11 +4,9 @@ Training pipeline on one side, NumPy match bot on the other. Current focus: make
 
 ## Where I'm at
 
-Food-density randomization, training only. Off must really mean off.
+League pool and PFSP sampling. Freeze checkpoints, sample opponents, keep each seat's recurrent state separate.
 
-With the knob at zero, don't consume an extra RNG draw. Otherwise the supposed baseline quietly changes every spawn after reset. Draw after seeding, arm before game construction, and keep this out of the shipped bot.
-
-Start small on the range. Randomization isn't automatically robustness.
+Hard-but-learnable opponents should get attention. A snapshot pool that only grows forever is another disk leak, so cap retention. Need the wiring into actual rollouts next; a league manager sitting unused doesn't train anything.
 
 ## Running things
 
@@ -18,4 +16,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 27. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `f944ff7`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 28. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `33279cf`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
