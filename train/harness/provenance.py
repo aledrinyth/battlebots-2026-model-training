@@ -57,6 +57,7 @@ _HASH_EXCLUDE = frozenset(
 _HASH_IF_NONDEFAULT: Dict[str, Any] = {
     "explore_oracle_prob": 0.0,
     "explore_oracle_max": 8,
+    "dr_food_density": 0.0,
 }
 
 

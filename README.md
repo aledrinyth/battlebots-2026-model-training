@@ -4,9 +4,11 @@ Training pipeline on one side, NumPy match bot on the other. Current focus: make
 
 ## Where I'm at
 
-Parallel demo collection. More workers, same dataset.
+Food-density randomization, training only. Off must really mean off.
 
-Seed assignment and output ordering matter. Worker completion order must not decide the final row order. Check byte identity against the sequential path. Fast but irreproducible demos would make the next BC comparison pretty useless.
+With the knob at zero, don't consume an extra RNG draw. Otherwise the supposed baseline quietly changes every spawn after reset. Draw after seeding, arm before game construction, and keep this out of the shipped bot.
+
+Start small on the range. Randomization isn't automatically robustness.
 
 ## Running things
 
@@ -16,4 +18,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 26. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `76d509b`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 27. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `f944ff7`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.

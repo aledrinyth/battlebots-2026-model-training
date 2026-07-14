@@ -54,6 +54,7 @@ class Actor:
         policy_seats: Iterable[int],
         scripted: Optional[Mapping[int, ScriptedBot]] = None,
         emit_update: bool = False,
+        dr_food_density: float = 0.0,
     ) -> None:
         self.seed = seed
         self.policy_seats = set(policy_seats)
@@ -64,7 +65,8 @@ class Actor:
         if overlap:
             raise ValueError(f"seats both policy and scripted: {sorted(overlap)}")
 
-        self.env = WrapperEnv(seed=seed, emit_update=emit_update)
+        self.env = WrapperEnv(seed=seed, emit_update=emit_update,
+                              dr_food_density=dr_food_density)
         self._featurizers: Dict[int, Featurizer] = {
             pid: Featurizer() for pid in self.policy_seats
         }

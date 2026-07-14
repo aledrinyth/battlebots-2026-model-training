@@ -71,6 +71,7 @@ class LocalCollector:
                 mass_scale=cfg.mass_scale,
                 reward_clip=cfg.reward_clip,
                 food_shaping_coef=cfg.food_shaping_coef,
+                dr_food_density=cfg.dr_food_density,
             )
             for g in range(self.G)
         ]

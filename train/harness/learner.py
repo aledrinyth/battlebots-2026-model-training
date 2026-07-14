@@ -244,6 +244,7 @@ class VecLearner:
                     self._error,
                     self.cfg.barrier_timeout_s,
                     self.cfg.food_shaping_coef,
+                    self.cfg.dr_food_density,
                 ),
                 daemon=True,
             )

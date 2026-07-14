@@ -46,9 +46,10 @@ from engine.interface.io.censor_event import CensorEvent
 from engine.state.game_state import GameState
 from engine.state.state_mutator import StateMutator
 
-from train.env import fast_vision
+from train.env import domain_rand, fast_vision
 
 from lib.config.arena import (
+    FOOD_COUNT,
     MAX_ROUNDS,
     NUM_PLAYERS,
     TURN_DURATION_SECONDS,
@@ -136,6 +137,7 @@ class WrapperEnv:
         seed: int,
         num_players: int = NUM_PLAYERS,
         emit_update: bool = True,
+        dr_food_density: float = 0.0,
     ) -> None:
         if num_players != NUM_PLAYERS:
             # GameState hard-codes NUM_PLAYERS internally; the catalog must match.
@@ -145,6 +147,9 @@ class WrapperEnv:
         self.seed = seed
         self.num_players = num_players
         self.emit_update = emit_update
+        #: P6.1 training-only DR: food count drawn per episode from
+        #: U[1−x, 1+x] × FOOD_COUNT. 0.0 (default) ⇒ off, bit-identical engine.
+        self.dr_food_density = float(dr_food_density)
 
         self.state: GameState
         self.mutator: StateMutator
@@ -161,6 +166,13 @@ class WrapperEnv:
         fast_vision.install()  # P1.5: NumPy-vectorized vision (idempotent, bit-exact)
 
         random.seed(self.seed)
+        if self.dr_food_density > 0.0:
+            # Draw AFTER seeding (deterministic per seed), arm BEFORE GameState()
+            # (its constructor spawns the initial food). With the knob at 0.0 no
+            # draw happens, so the engine RNG stream is untouched.
+            domain_rand.install()  # idempotent; training-only
+            scale = 1.0 + random.uniform(-self.dr_food_density, self.dr_food_density)
+            domain_rand.set_next_food_count(max(1, round(FOOD_COUNT * scale)))
         self.state = GameState()  # round == -1; spawns players/food/viruses via RNG
         self.mutator = StateMutator(self.state)
         self.censor = CensorEvent(self.state)

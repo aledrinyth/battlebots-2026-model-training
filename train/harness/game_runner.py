@@ -59,11 +59,13 @@ def nearest_food_dist(actor: Actor, pid: int) -> float:
     return best ** 0.5 if best != float("inf") else float("inf")
 
 
-def _make_actor(seed: int, policy_seats: Tuple[int, ...], scripted_by_seat: Mapping[int, str]) -> Actor:
+def _make_actor(seed: int, policy_seats: Tuple[int, ...], scripted_by_seat: Mapping[int, str],
+                dr_food_density: float = 0.0) -> Actor:
     from train.opponents.scripted import make_bot
 
     scripted = {int(pid): make_bot(name) for pid, name in scripted_by_seat.items()}
-    a = Actor(seed=seed, policy_seats=policy_seats, scripted=scripted, emit_update=False)
+    a = Actor(seed=seed, policy_seats=policy_seats, scripted=scripted, emit_update=False,
+              dr_food_density=dr_food_density)
     a.reset()
     return a
 
@@ -106,6 +108,7 @@ class GameRunner:
         mass_scale: float,
         reward_clip: float,
         food_shaping_coef: float = 0.0,
+        dr_food_density: float = 0.0,
     ) -> None:
         self.stream_index = stream_index
         self.seats = tuple(policy_seats)
@@ -116,10 +119,13 @@ class GameRunner:
         #: Optional dense food-approach shaping (see TrainConfig.food_shaping_coef).
         #: 0.0 ⇒ pure Δmass, and the nearest-food scan below is skipped entirely.
         self.food_shaping_coef = float(food_shaping_coef)
+        #: P6.1 training-only DR (see TrainConfig.dr_food_density); redrawn per game.
+        self.dr_food_density = float(dr_food_density)
 
         self._game_counter = 0
         self.actor = _make_actor(
-            game_seed(base_seed, stream_index, 0), self.seats, self.scripted_by_seat
+            game_seed(base_seed, stream_index, 0), self.seats, self.scripted_by_seat,
+            dr_food_density=self.dr_food_density,
         )
         self._stash: Dict[int, Tuple[float, float, float]] = {s: (0.0, 0.0, 0.0) for s in self.seats}
         self._mass_before: Dict[int, float] = {}
@@ -193,6 +199,7 @@ class GameRunner:
                 game_seed(self.base_seed, self.stream_index, self._game_counter),
                 self.seats,
                 self.scripted_by_seat,
+                dr_food_density=self.dr_food_density,
             )
             # keep _stash — it carries the finished game's last transitions (done=1)
             # to be reported on the next (fresh-game) round.

@@ -119,6 +119,14 @@ class TrainConfig:
     explore_oracle_prob: float = 0.0
     #: Max duration (rounds) of an oracle burst; drawn ``U[1, explore_oracle_max]``.
     explore_oracle_max: int = 8
+    #: **Training-only** P6.1 domain randomization: per-episode food count drawn
+    #: from ``U[1-x, 1+x] * FOOD_COUNT`` (playbook: 0.2 => +-20%, the pipeline
+    #: insurance for S1+/league burns). ``0.0`` (default) => off and
+    #: byte-identical to the pristine engine (no RNG draw, no patch), and
+    #: hash-neutral at the default (see provenance) so pre-existing run
+    #: identities are unchanged. Eval/demos/parity/compliance never enable it;
+    #: the grader's arena is always the stock food count.
+    dr_food_density: float = 0.0
 
     # -- run length / device -------------------------------------------------
     #: Number of PPO updates to run. Each consumes ``rollout_len`` rounds.

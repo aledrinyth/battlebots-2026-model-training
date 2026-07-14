@@ -39,6 +39,7 @@ def actor_process(
     error_event,
     timeout: float,
     food_shaping_coef: float = 0.0,
+    dr_food_density: float = 0.0,
 ) -> None:
     """Run one actor until ``stop_event`` / a broken barrier. Spawn entry point."""
     slabs: SlabSet | None = None
@@ -56,6 +57,7 @@ def actor_process(
             mass_scale=mass_scale,
             reward_clip=reward_clip,
             food_shaping_coef=food_shaping_coef,
+            dr_food_density=dr_food_density,
         )
 
         while True:
