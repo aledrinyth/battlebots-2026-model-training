@@ -1,20 +1,20 @@
 {
-  "title": "configs: stage1_bcft \u2014 S1 second cut, BC(cautious) -> PPO",
+  "title": "demos: --workers \u2014 parallel collection, byte-identical dataset",
   "purpose": "Preserve this actual Git milestone and its exact committed project files.",
   "kind": "git-anchor",
-  "ref": "86561c320250c923394ef2d136c7b073f6e8be7f",
-  "date": "2026-07-17T01:54:09+10:00",
+  "ref": "76d509b6c04b0fe5861dbfe6b88f31413dcb05a2",
+  "date": "2026-07-17T02:04:09+10:00",
   "pin": "c62e89d7d9f505a1c711248fe0429ba555c28323",
-  "number": 25,
-  "folder": "25-configs-stage1-bcft-s1-second-cut-bc-cautious-ppo",
+  "number": 26,
+  "folder": "26-demos-workers-parallel-collection-byte-identical-dataset",
   "file_count": 215,
-  "bytes": 9217444,
+  "bytes": 9220320,
   "delta": {
-    "added": [
-      "configs/stage1_bcft.yaml"
-    ],
+    "added": [],
     "modified": [
-      "README.md"
+      "README.md",
+      "tests/test_demos_bc.py",
+      "train/harness/demos.py"
     ],
     "deleted": []
   },
@@ -25,7 +25,7 @@
     ".gitmodules": "95d27a8955c417ff58e5bb98f046d21c274e41e80bc63469ee84dc87514dc552",
     ".importlinter": "13eba475bac0e0eabc2c648091c9538610b941a90768aa40aa58b8e5092d644d",
     "Makefile": "12b0b98f58164fd08198592b72cca39fc0aa7254546cebfc441bf000d1b96d18",
-    "README.md": "abfb034856391d33706943ddb246d6fd92f2f6aaed4c3839b3ffd8432c0436c4",
+    "README.md": "6aa8576e1d35b5a3c41f4b5b0b2248c8519bf401b5dc6fb8fce070c169900c89",
     "bot/__init__.py": "8bca39ff827db2a23436c6a22161eecf117be1359e8c711285474c0614e9ec1d",
     "bot/adapters/__init__.py": "22fbc6aa26988c5e26f226b8cbc284d2b189ab389baeacf41c11f8fc82b5d7da",
     "bot/adapters/act_v1.py": "f95d6cd7b69fb7178e93e84bdaefbf43bc19576b7744a2b32c3d2ca45045e47b",
@@ -73,7 +73,7 @@
     "tests/test_bot_main.py": "73d3546b0a2aebc4fd1826896d40352649ffc2c06f1de57c61adac534460c26a",
     "tests/test_bundle_scan.py": "2135ee6ee56259f1845eb455deb67f5b4c4cc83adc17093cf4fabe28e18cee81",
     "tests/test_compliance.py": "aef277315f61e42159cd337816ecdb79cf29d57c90e1f74a10132bbebd33ea6b",
-    "tests/test_demos_bc.py": "945ce32ae7d26e080d4c747f78e7524915ab03899ed688c5535f7197b5ca235e",
+    "tests/test_demos_bc.py": "97b2031ad641de4f3feea15e394335f054d542803e0f9afe2bfb98bd4ceea14f",
     "tests/test_evaluate_parallel.py": "91abaaa122ab36d29b41463f8626a8cf52c27ca511593b04750d95b56bc6241a",
     "tests/test_explore.py": "03c7478df87331dc7a11de7c0ada0c5144dd18c36c405abbcb94db7784266322",
     "tests/test_failsafe_fuzz.py": "011e1f2b68af4734648f5a72d243d53de464df46785d4396be44fa5bfd7c6072",
@@ -119,7 +119,7 @@
     "train/harness/actor.py": "8cc520ab76f925803c5355c09cd45c7d93e0c1db577daa2aaf69082fa2387237",
     "train/harness/collate.py": "ffd6f656472956de17e196d790e0d963b386b56e118d9d89f93dce3504b73e2c",
     "train/harness/config.py": "a6e6757a7c22bbef59e4ea4a26babd69e0b1ede31deab077c129995de74ed9b9",
-    "train/harness/demos.py": "5d0b4105b1ced5d5b3223be12c35f423e243cc90e8b399952759c8608fa76715",
+    "train/harness/demos.py": "777f0989bdc9b63b92c778fb16aee98a77236f1d6d1a3e4bdd6077c2fdc59555",
     "train/harness/evaluate.py": "6c16f82695832319c9080061d8e44541662eda8a675b774b703529081fcaa495",
     "train/harness/explore.py": "4673ce3371cf6f2444c3ff1f7b93bc1e34127bf0810967ba5760dd8b42d594d3",
     "train/harness/flat_obs.py": "8f84cb66d6aee9fde83d8fa04830b437adfcc1cb18885c639e90c67b5a269f38",

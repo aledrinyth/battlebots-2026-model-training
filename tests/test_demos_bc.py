@@ -109,3 +109,19 @@ def test_bc_checkpoint_loads_in_evaluate_and_init_weights(tiny_demos, tmp_path):
     first_key = next(iter(blob["state_dict"]))
     assert torch.allclose(blob["state_dict"][first_key],
                           torch.full_like(blob["state_dict"][first_key], 0.123))
+
+
+def test_collector_workers_are_byte_identical():
+    """--workers must not change the dataset: same games, same order, same rows.
+
+    Uses the mixed-opponent field (the Stage-1 collection shape) so the
+    parallel path is exercised on exactly what it was built to speed up.
+    """
+    kw = dict(expert="cautious", games=4, base_seed=77_701, max_rounds=40,
+              opponents=("greedy_food", "cautious", "chaser", "coward"))
+    seq = collect_demos(workers=1, **kw)
+    par = collect_demos(workers=3, **kw)
+    assert seq.keys() == par.keys()
+    for k in seq:
+        assert np.array_equal(seq[k], par[k]), f"field {k} differs across workers"
+    assert len(seq["final_masses"]) == 4
