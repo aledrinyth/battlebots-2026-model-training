@@ -4,9 +4,9 @@ Training pipeline on one side, NumPy match bot on the other. Current focus: make
 
 ## Where I'm at
 
-S1 attempt failed, retry path under review. Capture enough state to continue without guessing which weights are being converted.
+S1 recorded as passed. Historical champion: `stage1_bcft`, `ckpt_v001470`.
 
-Food DR, league pieces, and promotion gate are present. Don't claim a new champion until the next candidate actually clears the gate. Mostly a planning pause in this stage.
+Save that identity, then check deployment separately. Passing the training-side gate isn't the same as doing well in the tournament. Next annoying task is the single-file portal requirement.
 
 ## Running things
 
@@ -16,4 +16,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 30. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `e566570`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 31. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `be04ba1`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
