@@ -165,6 +165,39 @@ def _strided_chunks(n: int, workers: int) -> List[List[int]]:
     return [c for c in chunks if c]
 
 
+def play_games(
+    weights_path: Optional[str],
+    opponents: Sequence[str] = ("greedy_food", "cautious", "chaser", "coward", "dont_move"),
+    n_games: int = 100,
+    device: str = "cpu",
+    base_seed: int = 999_983,
+    workers: int = 1,
+    scripted_subject: Optional[str] = None,
+) -> List[Tuple[int, int, float]]:
+    """Per-game results ``[(game_index, rank, final_mass), …]``, index-sorted.
+
+    Game ``g`` is fully determined by ``(base_seed + g, g % 8)`` — two calls
+    with the same seeds/opponents but different subjects yield **paired**
+    games (identical fields, subject swapped), which is what the P6.3
+    promotion gate consumes.
+    """
+    if scripted_subject is not None and weights_path is not None:
+        raise ValueError("pass either weights_path or scripted_subject, not both")
+    if workers > 1 and n_games > 1:
+        ctx = mp.get_context("spawn")
+        jobs = [(weights_path, tuple(opponents), chunk, device, base_seed, scripted_subject)
+                for chunk in _strided_chunks(n_games, workers)]
+        with ctx.Pool(len(jobs)) as pool:
+            played = [row for rows in pool.map(_mp_play, jobs) for row in rows]
+    else:
+        policy = (None if scripted_subject is not None
+                  else _load_policy(weights_path, torch.device(device), seed=base_seed))
+        played = _play_games(policy, opponents, range(n_games), device, base_seed,
+                             scripted_subject=scripted_subject)
+    played.sort()  # by game index — order-independent of worker count
+    return played
+
+
 def evaluate(
     weights_path: Optional[str],
     opponents: Sequence[str] = ("greedy_food", "cautious", "chaser", "coward", "dont_move"),
@@ -184,21 +217,8 @@ def evaluate(
     independent and seeded per-index, so the results are identical to the
     sequential run — only wall-clock changes).
     """
-    if scripted_subject is not None and weights_path is not None:
-        raise ValueError("pass either weights_path or scripted_subject, not both")
-    if workers > 1 and n_games > 1:
-        ctx = mp.get_context("spawn")
-        jobs = [(weights_path, tuple(opponents), chunk, device, base_seed, scripted_subject)
-                for chunk in _strided_chunks(n_games, workers)]
-        with ctx.Pool(len(jobs)) as pool:
-            played = [row for rows in pool.map(_mp_play, jobs) for row in rows]
-    else:
-        policy = (None if scripted_subject is not None
-                  else _load_policy(weights_path, torch.device(device), seed=base_seed))
-        played = _play_games(policy, opponents, range(n_games), device, base_seed,
-                             scripted_subject=scripted_subject)
-
-    played.sort()  # by game index — order-independent of worker count
+    played = play_games(weights_path, opponents, n_games, device, base_seed,
+                        workers, scripted_subject)
     ranks = [r for _g, r, _m in played]
     masses = [m for _g, _r, m in played]
 
@@ -256,4 +276,4 @@ if __name__ == "__main__":
     _main()
 
 
-__all__ = ["evaluate", "EvalResult"]
+__all__ = ["evaluate", "play_games", "EvalResult"]

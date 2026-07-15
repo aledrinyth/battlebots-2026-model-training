@@ -1,22 +1,22 @@
 {
-  "title": "P6.2: league manager \u2014 snapshot pool + PFSP sampling + frozen seats",
+  "title": "P6.3: promotion gate \u2014 sequential paired-rank test, never promote noise",
   "purpose": "Preserve this actual Git milestone and its exact committed project files.",
   "kind": "git-anchor",
-  "ref": "33279cfa48c688b97f353dea7e90dd95be9edf98",
-  "date": "2026-07-17T03:49:23+10:00",
+  "ref": "2f59e0ee4c7ef1b2b043690cac62faceab730180",
+  "date": "2026-07-17T03:53:28+10:00",
   "pin": "c62e89d7d9f505a1c711248fe0429ba555c28323",
-  "number": 28,
-  "folder": "28-p6-2-league-manager-snapshot-pool-pfsp-sampling-frozen-seats",
-  "file_count": 220,
-  "bytes": 9245083,
+  "number": 29,
+  "folder": "29-p6-3-promotion-gate-sequential-paired-rank-test-never-promote-noise",
+  "file_count": 222,
+  "bytes": 9255682,
   "delta": {
     "added": [
-      "tests/test_league.py",
-      "train/league.py",
-      "train/opponents/frozen.py"
+      "tests/test_promote.py",
+      "tools/promote.py"
     ],
     "modified": [
-      "README.md"
+      "README.md",
+      "train/harness/evaluate.py"
     ],
     "deleted": []
   },
@@ -27,7 +27,7 @@
     ".gitmodules": "95d27a8955c417ff58e5bb98f046d21c274e41e80bc63469ee84dc87514dc552",
     ".importlinter": "13eba475bac0e0eabc2c648091c9538610b941a90768aa40aa58b8e5092d644d",
     "Makefile": "12b0b98f58164fd08198592b72cca39fc0aa7254546cebfc441bf000d1b96d18",
-    "README.md": "eb38b4676ef183fda9c1b2afead620c9fcc05d3f0c65c5885836e2ecac8a9634",
+    "README.md": "48e6ee62a12409a3f72906fa084697303ea603a5168a04eba06c67402dd0d7d5",
     "bot/__init__.py": "8bca39ff827db2a23436c6a22161eecf117be1359e8c711285474c0614e9ec1d",
     "bot/adapters/__init__.py": "22fbc6aa26988c5e26f226b8cbc284d2b189ab389baeacf41c11f8fc82b5d7da",
     "bot/adapters/act_v1.py": "f95d6cd7b69fb7178e93e84bdaefbf43bc19576b7744a2b32c3d2ca45045e47b",
@@ -91,6 +91,7 @@
     "tests/test_opponents.py": "ab37897ccc7ce0bac3de683bbd3625014bb49fd12e14cde828476e1c5317f156",
     "tests/test_package.py": "0fa877758b6a7e9c4399fa972eb4cc6277d66997b5cb6a6caeefcd36a860bb77",
     "tests/test_ppo_learn.py": "c38f4d4682b60b49b219576e9def4841884a983f1465dfc662f1cc9abe1f4133",
+    "tests/test_promote.py": "f78ff063e9425ba399c5d5bc91f8352c687d9e3046c39ffd7541ce3951b64aab",
     "tests/test_protocol_survival.py": "a1f9041cfe3e0398c26adc56f5398d08737cc46a32d94ccb0ba64f0db8da3b4f",
     "tests/test_reference_fixtures.py": "659d99c73714ac9bc0d43809e6afee8625efa01008a30eb6f612b12f8f7807f2",
     "tests/test_rollout_gae.py": "f3d6f4a607ea7d970ee0eab942dd4df746667b7ebb97dd3ff3e49255e6aa0c04",
@@ -110,6 +111,7 @@
     "tools/compliance.py": "a7ed18dff3e254f19de6dd8b67bcb3e70fcf5e354f1d86adcbe5b62962c23281",
     "tools/package.py": "c356f929fc7c4627561801d229829a910b1056fca78b77221727731496f7e435",
     "tools/probe_food_capacity.py": "e73aba4a970eb62f5f326227fac644be23b2fd35757a413e927a9db4cab850a2",
+    "tools/promote.py": "dff8056e0761d6a7f4d90d18f13e307796c3860e9cd3adf7617c62ea77a64f07",
     "tools/record_reference_match.py": "4eed484461a9c7f281b6780ffd7060fa4c92fa86c1f81c4b7b73bc3783cc0163",
     "tools/run_reference_match.sh": "6e578f315bceac864c49fe32e1004e250af745024c3ef3d7bc477f4bfafa755e",
     "tools/scene_bank.py": "9a840d1a75d2ebf7c3189a99c56d7815bf7d394cd735d645bf8cdfb899ae11e7",
@@ -125,7 +127,7 @@
     "train/harness/collate.py": "ffd6f656472956de17e196d790e0d963b386b56e118d9d89f93dce3504b73e2c",
     "train/harness/config.py": "93916532ef1c0d4eb88f28d721250810db894bf8c1e1b53013f6d5fca8bdd148",
     "train/harness/demos.py": "777f0989bdc9b63b92c778fb16aee98a77236f1d6d1a3e4bdd6077c2fdc59555",
-    "train/harness/evaluate.py": "6c16f82695832319c9080061d8e44541662eda8a675b774b703529081fcaa495",
+    "train/harness/evaluate.py": "e153a20fefb0377e944ef2ca930c45a8a78b74ec9450955cd043de7667c02cab",
     "train/harness/explore.py": "4673ce3371cf6f2444c3ff1f7b93bc1e34127bf0810967ba5760dd8b42d594d3",
     "train/harness/flat_obs.py": "8f84cb66d6aee9fde83d8fa04830b437adfcc1cb18885c639e90c67b5a269f38",
     "train/harness/game_runner.py": "8c063cd453ea2708a8ebe686b375d8cca32cd18986cf597d9d440f6bdaaf1f71",

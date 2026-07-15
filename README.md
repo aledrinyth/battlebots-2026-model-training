@@ -4,9 +4,11 @@ Training pipeline on one side, NumPy match bot on the other. Current focus: make
 
 ## Where I'm at
 
-League pool and PFSP sampling. Freeze checkpoints, sample opponents, keep each seat's recurrent state separate.
+Promotion gate. Paired ranks, sequential evidence, no promotion just because one seed was kind.
 
-Hard-but-learnable opponents should get attention. A snapshot pool that only grows forever is another disk leak, so cap retention. Need the wiring into actual rollouts next; a league manager sitting unused doesn't train anything.
+Use identical match conditions for candidate and incumbent. Stop when the configured test has enough evidence, not when I get bored watching it. Keep uncertainty in the decision.
+
+Anchor results still aren't the tournament meta. Remember that later.
 
 ## Running things
 
@@ -16,4 +18,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 28. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `33279cf`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 29. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `2f59e0e`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
