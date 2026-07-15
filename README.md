@@ -4,11 +4,9 @@ Training pipeline on one side, NumPy match bot on the other. Current focus: make
 
 ## Where I'm at
 
-Promotion gate. Paired ranks, sequential evidence, no promotion just because one seed was kind.
+S1 attempt failed, retry path under review. Capture enough state to continue without guessing which weights are being converted.
 
-Use identical match conditions for candidate and incumbent. Stop when the configured test has enough evidence, not when I get bored watching it. Keep uncertainty in the decision.
-
-Anchor results still aren't the tournament meta. Remember that later.
+Food DR, league pieces, and promotion gate are present. Don't claim a new champion until the next candidate actually clears the gate. Mostly a planning pause in this stage.
 
 ## Running things
 
@@ -18,4 +16,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 29. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `2f59e0e`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 30. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `e566570`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
