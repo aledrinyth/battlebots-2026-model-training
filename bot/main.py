@@ -60,6 +60,12 @@ from bot.safety import safe_move  # noqa: E402
 _LEDGER_EVERY = 100  # turns between stderr ledger lines
 _GC_EVERY = 32       # turns between gen-0 collects (post-flush)
 
+#: Single-file submission hook (tools/package_single.py): the generated
+#: one-file build injects the raw ``weights.npz`` bytes here before calling
+#: :func:`main`, bypassing the filesystem entirely. ``None`` ⇒ resolve from
+#: disk as usual.
+WEIGHTS_BYTES: bytes | None = None
+
 
 def _log(msg: str) -> None:
     print(f"[bot] {msg}", file=sys.stderr, flush=True)
@@ -94,7 +100,11 @@ def main() -> None:
     conn = Connection()
     t_pipes = time.perf_counter()
 
-    policy = NumpyPolicy.load(str(_resolve_weights()))
+    if WEIGHTS_BYTES is not None:  # single-file build: weights travel in-file
+        import io
+        policy = NumpyPolicy.load(io.BytesIO(WEIGHTS_BYTES))
+    else:
+        policy = NumpyPolicy.load(str(_resolve_weights()))
     featurizer = Featurizer()
     hidden = policy.initial_hidden()
 

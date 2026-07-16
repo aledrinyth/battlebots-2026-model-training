@@ -108,7 +108,10 @@ class NumpyPolicy:
     # -- loading --------------------------------------------------------------
 
     @classmethod
-    def load(cls, path: str) -> "NumpyPolicy":
+    def load(cls, path) -> "NumpyPolicy":
+        """Load from an ``.npz`` path *or* a file-like object (``np.load``
+        accepts both — the single-file submission build feeds a BytesIO of
+        embedded weight bytes)."""
         with np.load(path) as z:
             manifest: Dict[str, Any] = json.loads(bytes(z[MANIFEST_KEY]).decode())
             arrays = {k: np.ascontiguousarray(z[k], dtype=np.float32)

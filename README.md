@@ -4,9 +4,11 @@ Training pipeline on one side, NumPy match bot on the other. Current focus: make
 
 ## Where I'm at
 
-S1 recorded as passed. Historical champion: `stage1_bcft`, `ckpt_v001470`.
+Portal takes one Python file. Single-file builder added; this changes packaging, not the policy objective.
 
-Save that identity, then check deployment separately. Passing the training-side gate isn't the same as doing well in the tournament. Next annoying task is the single-file portal requirement.
+Need identical actions before and after flattening/embedding, legal imports, and the actual file through compliance. Payload size/startup can matter. Don't accidentally benchmark the package and upload the single-file version without checking it.
+
+Later portal scanner behavior may still force a flatter layout.
 
 ## Running things
 
@@ -16,4 +18,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 31. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `be04ba1`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 32. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. Source follows the original Git milestone; documentation is consolidated here. Git reference: `8ddb27c`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
