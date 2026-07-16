@@ -1,23 +1,18 @@
 {
-  "title": "P5.5b: single-file submission build \u2014 portal accepts one .py",
+  "title": "notes: session handoff \u2014 S1 closed, single-file deployed, tourney diagnosed",
   "purpose": "Preserve this actual Git milestone and its exact committed project files.",
   "kind": "git-anchor",
-  "ref": "8ddb27c1097dd258c664a12263173ee233e068c8",
-  "date": "2026-07-17T14:29:22+10:00",
+  "ref": "03cc73769ebc65ce1cfe570f113bd09772d237a4",
+  "date": "2026-07-17T19:02:41+10:00",
   "pin": "c62e89d7d9f505a1c711248fe0429ba555c28323",
-  "number": 32,
-  "folder": "32-p5-5b-single-file-submission-build-portal-accepts-one-py",
+  "number": 33,
+  "folder": "33-notes-session-handoff-s1-closed-single-file-deployed-tourney-diagnosed",
   "file_count": 224,
-  "bytes": 9267656,
+  "bytes": 9267559,
   "delta": {
-    "added": [
-      "tests/test_package_single.py",
-      "tools/package_single.py"
-    ],
+    "added": [],
     "modified": [
-      "README.md",
-      "bot/inference.py",
-      "bot/main.py"
+      "README.md"
     ],
     "deleted": []
   },
@@ -28,7 +23,7 @@
     ".gitmodules": "95d27a8955c417ff58e5bb98f046d21c274e41e80bc63469ee84dc87514dc552",
     ".importlinter": "13eba475bac0e0eabc2c648091c9538610b941a90768aa40aa58b8e5092d644d",
     "Makefile": "12b0b98f58164fd08198592b72cca39fc0aa7254546cebfc441bf000d1b96d18",
-    "README.md": "2747c4343a12be52da43fbade084f071e893335983cb09fe6a320708909898a9",
+    "README.md": "1e1a4a7f256d38ed145a84c7d21a4f08ec6c4cda9bf3f71619c49d14cc6b3b43",
     "bot/__init__.py": "8bca39ff827db2a23436c6a22161eecf117be1359e8c711285474c0614e9ec1d",
     "bot/adapters/__init__.py": "22fbc6aa26988c5e26f226b8cbc284d2b189ab389baeacf41c11f8fc82b5d7da",
     "bot/adapters/act_v1.py": "f95d6cd7b69fb7178e93e84bdaefbf43bc19576b7744a2b32c3d2ca45045e47b",
