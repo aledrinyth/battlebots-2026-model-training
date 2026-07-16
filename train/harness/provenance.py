@@ -45,7 +45,8 @@ _ENGINE_DIR = os.path.join(_REPO_ROOT, "vendor", "agario-public")
 # or a different stopping point. ``seat_slots`` is derived from ``policy_seats``.
 _HASH_EXCLUDE = frozenset(
     {"device", "num_updates", "duration_s", "log_every",
-     "min_infer_batch", "barrier_timeout_s", "seat_slots"}
+     "min_infer_batch", "barrier_timeout_s", "seat_slots",
+     "league_dir"}  # a filesystem location, not part of the experiment identity
 )
 
 # Additive knobs introduced *after* hashed runs already existed. At their inert
@@ -58,6 +59,10 @@ _HASH_IF_NONDEFAULT: Dict[str, Any] = {
     "explore_oracle_prob": 0.0,
     "explore_oracle_max": 8,
     "dr_food_density": 0.0,
+    "league": False,
+    "league_snapshot_interval_s": 1800.0,
+    "league_anchor_min_frac": 0.10,
+    "league_ema": 0.1,
 }
 
 

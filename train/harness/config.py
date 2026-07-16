@@ -119,6 +119,26 @@ class TrainConfig:
     explore_oracle_prob: float = 0.0
     #: Max duration (rounds) of an oracle burst; drawn ``U[1, explore_oracle_max]``.
     explore_oracle_max: int = 8
+
+    # -- league (P6.4 wiring of the P6.2 pool) --------------------------------
+    #: Master switch: when True, the non-policy seats of every game are drawn
+    #: **per game** by the league (PFSP over frozen snapshots + scripted anchors,
+    #: ``train.league.LeaguePool``) instead of the static round-robin
+    #: ``scripted_names`` mapping. The anchor set *is* ``scripted_names`` — the
+    #: same fixed reference bots, now guaranteed ≥ ``league_anchor_min_frac`` of
+    #: the table while snapshots fill the rest. False (default) ⇒ byte-identical
+    #: to the pre-league harness, and hash-neutral (see provenance).
+    league: bool = False
+    #: Where the pool lives (``league.json`` + ``snap_v*.npz`` + ``results/``).
+    #: Operational (hash-excluded): the RunManager defaults it to
+    #: ``<run_dir>/league`` so a run's pool travels with the run.
+    league_dir: str = ""
+    #: Freeze the learner into the pool every this many seconds (playbook: 30 min).
+    league_snapshot_interval_s: float = 1800.0
+    #: Scripted anchors always hold at least this fraction of the 8-seat table.
+    league_anchor_min_frac: float = 0.10
+    #: EMA step for per-entry win-rate tracking (PFSP's ``p_current``).
+    league_ema: float = 0.1
     #: **Training-only** P6.1 domain randomization: per-episode food count drawn
     #: from ``U[1-x, 1+x] * FOOD_COUNT`` (playbook: 0.2 => +-20%, the pipeline
     #: insurance for S1+/league burns). ``0.0`` (default) => off and
@@ -191,6 +211,16 @@ class TrainConfig:
             raise ValueError(
                 f"batch_rows={self.batch_rows} < min_infer_batch={self.min_infer_batch}; "
                 f"raise num_actors to ≥ {(-(-self.min_infer_batch // self.seats_per_actor))}"
+            )
+        if self.league and len(self.policy_seats) >= 8:
+            raise ValueError(
+                "league=True needs at least one non-policy seat for opponents "
+                f"(policy_seats={self.policy_seats} fills the whole table)"
+            )
+        if self.league and not self.league_dir:
+            raise ValueError(
+                "league=True requires league_dir (the RunManager defaults it to "
+                "<run_dir>/league when launching from a YAML)"
             )
 
 

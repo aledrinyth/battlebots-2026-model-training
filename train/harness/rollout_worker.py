@@ -62,6 +62,16 @@ class LocalCollector:
         self.R = self.G * self.S
         scripted = _scripted_by_seat(cfg)
         base = cfg.base_seed + worker_id * 10_000_019
+        # P6.4 league seams: per-game PFSP seats + result records (one results
+        # file per worker; the trainer-side coordinator folds them by offset).
+        sampler = None
+        self._results_writer = None
+        if cfg.league:
+            from train.harness.league_seats import LeagueSeatSampler, ResultsWriter
+            sampler = LeagueSeatSampler(
+                cfg.league_dir, tuple(cfg.scripted_names),
+                cfg.league_anchor_min_frac, base)
+            self._results_writer = ResultsWriter(cfg.league_dir, f"worker_{worker_id:03d}")
         self.runners = [
             GameRunner(
                 stream_index=g,
@@ -72,6 +82,8 @@ class LocalCollector:
                 reward_clip=cfg.reward_clip,
                 food_shaping_coef=cfg.food_shaping_coef,
                 dr_food_density=cfg.dr_food_density,
+                seat_sampler=sampler,
+                result_sink=self._results_writer,
             )
             for g in range(self.G)
         ]
@@ -215,6 +227,9 @@ def _main() -> None:
     p.add_argument("--seed", type=int, default=20260709)
     p.add_argument("--compress", action="store_true",
                    help="gzip shards (smaller over the network; costs worker CPU)")
+    p.add_argument("--league-dir", type=str, default="",
+                   help="enable P6.4 league seats: pool dir (league.json + snap_*.npz); "
+                        "results land in <dir>/results/worker_<id>.jsonl")
     args = p.parse_args()
 
     cfg = TrainConfig(
@@ -223,6 +238,8 @@ def _main() -> None:
         policy_seats=tuple(args.policy_seats),
         base_seed=args.seed,
         device="cpu",
+        league=bool(args.league_dir),
+        league_dir=args.league_dir,
     )
     n = run_worker(cfg, args.worker_id, args.shard_out, args.weights_in,
                    num_rollouts=args.rollouts, duration_s=args.duration, compress=args.compress)

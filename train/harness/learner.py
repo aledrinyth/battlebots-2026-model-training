@@ -245,6 +245,9 @@ class VecLearner:
                     self.cfg.barrier_timeout_s,
                     self.cfg.food_shaping_coef,
                     self.cfg.dr_food_density,
+                    self.cfg.league_dir if self.cfg.league else "",
+                    tuple(self.cfg.scripted_names),
+                    self.cfg.league_anchor_min_frac,
                 ),
                 daemon=True,
             )
@@ -371,6 +374,13 @@ class VecLearner:
                 rew = self.buffer.reward[self.buffer.active]
                 metrics["mean_reward"] = float(rew.mean()) if rew.size else 0.0
                 metrics["eats"] = float((rew > 0).sum())
+                # P6.4 dashboard inputs: deaths (done transitions on acted rows —
+                # includes the rare game-over-while-alive round, a fine proxy) and
+                # split usage, per rollout.
+                act = self.buffer.active
+                metrics["deaths"] = float(self.buffer.done[act].sum())
+                metrics["split_frac"] = (
+                    float(self.buffer.split[act].mean()) if act.any() else 0.0)
                 stats.updates += 1
                 stats.last_metrics = metrics
                 hidden = hidden_after.detach()

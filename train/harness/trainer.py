@@ -99,6 +99,13 @@ def run_trainer(
     optimizer = torch.optim.Adam(policy.parameters(), lr=cfg.lr)
     arch = _arch_meta(cfg)
 
+    # P6.4: trainer-side league coordination (snapshots + folding the workers'
+    # synced-back results files). The workers sample seats from the same dir.
+    league_coord = None
+    if cfg.league:
+        from train.harness.league_wire import coordinator_from_config
+        league_coord = coordinator_from_config(cfg)
+
     resume_v = None if fresh else latest_weights_version(weights_out)
     if resume_v is not None:
         load_weights_into(policy, weights_out)
@@ -153,6 +160,8 @@ def run_trainer(
         prune_weights(weights_out, keep_weights)
         for p in batch_paths:
             archive_shard(p, consumed_dir)
+        if league_coord is not None:
+            league_coord.step(policy, version)
 
         if updates % log_every == 0:
             el = time.monotonic() - t0
@@ -184,6 +193,9 @@ def _main() -> None:
     p.add_argument("--device", type=str, default="cuda")
     p.add_argument("--policy-seats", type=int, nargs="+", default=list(range(8)))
     p.add_argument("--seed", type=int, default=20260709)
+    p.add_argument("--league-dir", type=str, default="",
+                   help="enable P6.4 league coordination: snapshot into this pool dir "
+                        "and fold the workers' synced-back results/*.jsonl")
     args = p.parse_args()
 
     consumed = args.consumed_dir or (args.shard_in.rstrip("/") + "_consumed")
@@ -192,6 +204,8 @@ def _main() -> None:
         device=args.device,
         policy_seats=tuple(args.policy_seats),
         base_seed=args.seed,
+        league=bool(args.league_dir),
+        league_dir=args.league_dir,
     )
     final = run_trainer(
         cfg, args.shard_in, args.weights_out, consumed,

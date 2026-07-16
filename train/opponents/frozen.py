@@ -23,10 +23,14 @@ from train.opponents.scripted import ScriptedBot
 class FrozenPolicyBot(ScriptedBot):
     """A past snapshot acting greedily via the match-time NumPy path."""
 
-    def __init__(self, weights_path: str | Path) -> None:
+    def __init__(self, weights_path: str | Path, policy: NumpyPolicy | None = None) -> None:
         self.weights_path = str(weights_path)
         self.name = f"frozen:{Path(weights_path).stem}"
-        self._policy = NumpyPolicy.load(self.weights_path)
+        # ``policy`` lets a caller share one loaded weight set across several
+        # seats (PFSP samples with replacement, so the same snapshot can hold
+        # multiple seats per game). NumpyPolicy.act is pure — the recurrent
+        # hidden lives *here*, per seat — so sharing weights is safe.
+        self._policy = policy if policy is not None else NumpyPolicy.load(self.weights_path)
         self._featurizer = Featurizer()
         self._hidden = self._policy.initial_hidden()
 

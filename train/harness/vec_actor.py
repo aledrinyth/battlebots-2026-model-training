@@ -40,14 +40,26 @@ def actor_process(
     timeout: float,
     food_shaping_coef: float = 0.0,
     dr_food_density: float = 0.0,
+    league_dir: str = "",
+    league_anchors: Tuple[str, ...] = (),
+    league_anchor_min_frac: float = 0.10,
 ) -> None:
     """Run one actor until ``stop_event`` / a broken barrier. Spawn entry point."""
     slabs: SlabSet | None = None
+    writer = None
     try:
         slabs = SlabSet.attach(slab_names)
         obs_slab = slabs.obs[actor_index]      # (seats, OBS_WIDTH)
         meta_slab = slabs.meta[actor_index]    # (seats, META_W)
         act_slab = slabs.act[actor_index]      # (seats, 2)
+
+        # P6.4 league seams (torch-free): per-game PFSP seats + result records.
+        sampler = None
+        if league_dir:
+            from train.harness.league_seats import LeagueSeatSampler, ResultsWriter
+            sampler = LeagueSeatSampler(
+                league_dir, league_anchors, league_anchor_min_frac, base_seed)
+            writer = ResultsWriter(league_dir, f"actor_{actor_index:03d}")
 
         runner = GameRunner(
             stream_index=actor_index,
@@ -58,6 +70,8 @@ def actor_process(
             reward_clip=reward_clip,
             food_shaping_coef=food_shaping_coef,
             dr_food_density=dr_food_density,
+            seat_sampler=sampler,
+            result_sink=writer,
         )
 
         while True:
@@ -95,6 +109,8 @@ def actor_process(
             pass
         raise
     finally:
+        if writer is not None:
+            writer.close()
         if slabs is not None:
             slabs.close()
 

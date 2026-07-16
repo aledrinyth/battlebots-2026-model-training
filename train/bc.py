@@ -72,11 +72,22 @@ def train_bc(
     val_frac: float = 0.05,
     seed: int = 0,
     log: bool = True,
+    split_pos_weight: float = 1.0,
+    keep_best: bool = False,
 ) -> Tuple[nn.Module, Dict[str, float]]:
     """Fit the default AgarPolicy to the demos; return ``(policy, metrics)``.
 
     ``metrics`` carries the held-out heading top-1 accuracy (``val_acc``) — the
-    representation-probe verdict — plus final losses.
+    representation-probe verdict — plus final losses and split-head
+    precision/recall (the v3 split-resurrection signal).
+
+    If ``data`` carries a ``weight`` column (replay BC: per-row terminal-rank
+    quality), both loss terms are weighted by it. ``split_pos_weight``
+    up-weights positive split rows in the BCE (replay split base rates are
+    1–2 %, where an unweighted head can sit silent below 0.5 forever).
+    ``keep_best=True`` restores the epoch with the best ``val_adj_acc``
+    afterward (the S1 lesson: epochs past a flat validation curve buy
+    memorization, not skill), recording it as ``best_epoch``.
     """
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
@@ -87,6 +98,10 @@ def train_bc(
     split = torch.as_tensor(data["split"])
     label_ok = torch.as_tensor(data["label_ok"].astype(np.float32))
     is_reset = data["is_reset"]
+    weight = (
+        torch.as_tensor(data["weight"].astype(np.float32))
+        if "weight" in data else None
+    )
 
     starts = _window_starts(len(obs), window)
     rng.shuffle(starts)
@@ -97,17 +112,29 @@ def train_bc(
     policy = build_policy(cfg).to(dev)
     optimizer = torch.optim.Adam(policy.parameters(), lr=lr)
     ce = nn.CrossEntropyLoss(reduction="none")
-    bce = nn.BCEWithLogitsLoss(reduction="none")
+    bce = nn.BCEWithLogitsLoss(
+        reduction="none",
+        pos_weight=torch.tensor(float(split_pos_weight), device=dev),
+    )
 
     def _loss_on(hl, sl, rows_t):
         h = heading[rows_t].to(dev)
         s = split[rows_t].to(dev)
         ok = label_ok[rows_t].to(dev)
-        lh = (ce(hl, h) * ok).sum() / ok.sum().clamp_min(1.0)
-        ls = bce(sl, s).mean()
+        w = weight[rows_t].to(dev) if weight is not None else None
+        okw = ok if w is None else ok * w
+        lh = (ce(hl, h) * okw).sum() / okw.sum().clamp_min(1.0)
+        ls_raw = bce(sl, s)
+        if w is None:
+            ls = ls_raw.mean()
+        else:
+            ls = (ls_raw * w).sum() / w.sum().clamp_min(1.0)
         return lh + ls, lh, ls
 
     metrics: Dict[str, float] = {}
+    best_adj = -1.0
+    best_epoch = 0
+    best_state = None
     for epoch in range(1, epochs + 1):
         t0 = time.monotonic()
         rng.shuffle(train_starts)
@@ -132,12 +159,15 @@ def train_bc(
         # prediction within ±1 bin (15°) as correct — behaviorally, steering one
         # bin off the expert still closes on the food, so adj is the number
         # that predicts eval mass; exact top-1 is the stricter fit signal.
+        # Split-head precision/recall at logit 0 is the split-resurrection
+        # signal: a head that never fires reads recall 0 no matter the BCE.
         policy.eval()
         correct = adjacent = total = 0
+        s_tp = s_fp = s_fn = s_pos = 0
         with torch.no_grad():
             for i in range(0, len(val_starts), batch_windows):
                 batch = val_starts[i:i + batch_windows]
-                hls, _sls = _run_window(policy, obs, is_reset, batch, window, dev)
+                hls, sls = _run_window(policy, obs, is_reset, batch, window, dev)
                 for t in range(window):
                     rows_t = batch + t
                     ok = data["label_ok"][rows_t]
@@ -147,14 +177,37 @@ def train_bc(
                     correct += int((dist == 0).sum())
                     adjacent += int((dist <= 1).sum())
                     total += int(ok.sum())
+                    sp = (sls[t] > 0.0).cpu().numpy()
+                    st = data["split"][rows_t] > 0.5
+                    s_tp += int((sp & st).sum())
+                    s_fp += int((sp & ~st).sum())
+                    s_fn += int((~sp & st).sum())
+                    s_pos += int(st.sum())
         val_acc = correct / max(total, 1)
         val_adj = adjacent / max(total, 1)
         metrics = {"epoch": epoch, "train_loss": ep_loss / max(n_b, 1),
-                   "val_acc": val_acc, "val_adj_acc": val_adj}
+                   "val_acc": val_acc, "val_adj_acc": val_adj,
+                   "val_split_recall": s_tp / max(s_pos, 1),
+                   "val_split_precision": s_tp / max(s_tp + s_fp, 1),
+                   "val_split_pos": s_pos}
+        if keep_best and val_adj >= best_adj:
+            best_adj = val_adj
+            best_epoch = epoch
+            best_state = {k: v.detach().cpu().clone()
+                          for k, v in policy.state_dict().items()}
         if log:
             print(f"[bc {epoch}/{epochs}] loss={metrics['train_loss']:.4f} "
                   f"val_heading_acc={val_acc:.1%} (±1 bin: {val_adj:.1%}) "
-                  f"({time.monotonic() - t0:.0f}s)", flush=True)
+                  f"split_recall={metrics['val_split_recall']:.1%}"
+                  f"/prec={metrics['val_split_precision']:.1%} "
+                  f"(n={s_pos}) ({time.monotonic() - t0:.0f}s)", flush=True)
+    if keep_best and best_state is not None:
+        policy.load_state_dict(best_state)
+        metrics["best_epoch"] = best_epoch
+        metrics["best_val_adj_acc"] = best_adj
+        if log:
+            print(f"[bc] restored best epoch {best_epoch} "
+                  f"(val_adj {best_adj:.1%})", flush=True)
     return policy, metrics
 
 
@@ -184,6 +237,11 @@ def _main() -> None:
     p.add_argument("--batch-windows", type=int, default=32)
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--device", default="cpu")
+    p.add_argument("--split-pos-weight", type=float, default=1.0,
+                   help="up-weight split=1 rows in the BCE (replay BC: base "
+                        "rate is 1-2%)")
+    p.add_argument("--keep-best", action="store_true",
+                   help="restore the best-val_adj epoch instead of the last")
     args = p.parse_args()
 
     data = dict(np.load(args.data))
@@ -191,7 +249,9 @@ def _main() -> None:
           f"(label_ok {data['label_ok'].mean():.1%})", flush=True)
     policy, metrics = train_bc(data, epochs=args.epochs, window=args.window,
                                batch_windows=args.batch_windows, lr=args.lr,
-                               device=args.device)
+                               device=args.device,
+                               split_pos_weight=args.split_pos_weight,
+                               keep_best=args.keep_best)
     save_bc_checkpoint(policy, metrics, args.out, data_path=args.data)
     print(f"[bc] wrote {args.out} (val_heading_acc {metrics['val_acc']:.1%}) — "
           f"eval with: python -m train.harness.evaluate --weights {args.out} "

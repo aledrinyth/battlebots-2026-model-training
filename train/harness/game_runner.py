@@ -59,12 +59,9 @@ def nearest_food_dist(actor: Actor, pid: int) -> float:
     return best ** 0.5 if best != float("inf") else float("inf")
 
 
-def _make_actor(seed: int, policy_seats: Tuple[int, ...], scripted_by_seat: Mapping[int, str],
+def _make_actor(seed: int, policy_seats: Tuple[int, ...], scripted_bots: Mapping[int, object],
                 dr_food_density: float = 0.0) -> Actor:
-    from train.opponents.scripted import make_bot
-
-    scripted = {int(pid): make_bot(name) for pid, name in scripted_by_seat.items()}
-    a = Actor(seed=seed, policy_seats=policy_seats, scripted=scripted, emit_update=False,
+    a = Actor(seed=seed, policy_seats=policy_seats, scripted=scripted_bots, emit_update=False,
               dr_food_density=dr_food_density)
     a.reset()
     return a
@@ -109,6 +106,8 @@ class GameRunner:
         reward_clip: float,
         food_shaping_coef: float = 0.0,
         dr_food_density: float = 0.0,
+        seat_sampler=None,
+        result_sink=None,
     ) -> None:
         self.stream_index = stream_index
         self.seats = tuple(policy_seats)
@@ -121,15 +120,36 @@ class GameRunner:
         self.food_shaping_coef = float(food_shaping_coef)
         #: P6.1 training-only DR (see TrainConfig.dr_food_density); redrawn per game.
         self.dr_food_density = float(dr_food_density)
+        #: P6.4 league seam: when set, the non-policy seats of **every** game are
+        #: drawn per game via ``seat_sampler.sample(stream, game_counter, seats)``
+        #: (PFSP anchors + frozen snapshots) instead of ``scripted_by_seat``.
+        self.seat_sampler = seat_sampler
+        #: P6.4 monitoring seam: called with a ``GameResult`` at every game end
+        #: (rankings + final masses + the seat plan), before rollover.
+        self.result_sink = result_sink
 
         self._game_counter = 0
+        self._plan: Dict[int, str] = {}
         self.actor = _make_actor(
-            game_seed(base_seed, stream_index, 0), self.seats, self.scripted_by_seat,
+            game_seed(base_seed, stream_index, 0), self.seats, self._new_game_bots(),
             dr_food_density=self.dr_food_density,
         )
         self._stash: Dict[int, Tuple[float, float, float]] = {s: (0.0, 0.0, 0.0) for s in self.seats}
         self._mass_before: Dict[int, float] = {}
         self._dist_before: Dict[int, float] = {}
+
+    def _new_game_bots(self) -> Dict[int, object]:
+        """Build the scripted bots for game ``self._game_counter`` and record the plan."""
+        if self.seat_sampler is not None:
+            non_policy = tuple(pid for pid in range(8) if pid not in self.seats)
+            bots, plan = self.seat_sampler.sample(
+                self.stream_index, self._game_counter, non_policy)
+        else:
+            from train.opponents.scripted import make_bot
+            bots = {int(pid): make_bot(name) for pid, name in self.scripted_by_seat.items()}
+            plan = {int(pid): f"anchor:{name}" for pid, name in self.scripted_by_seat.items()}
+        self._plan = {**plan, **{int(s): "policy" for s in self.seats}}
+        return bots
 
     # -- the round exchange --------------------------------------------------
 
@@ -194,11 +214,22 @@ class GameRunner:
         self._stash = new_stash
 
         if done:
+            if self.result_sink is not None:
+                from train.harness.league_seats import GameResult
+                self.result_sink(GameResult(
+                    stream_index=self.stream_index,
+                    game_counter=self._game_counter,
+                    seed=game_seed(self.base_seed, self.stream_index, self._game_counter),
+                    rankings=[int(p) for p in self.actor.rankings()],
+                    final_masses={int(p): float(m)
+                                  for p, m in self.actor.final_masses().items()},
+                    plan=dict(self._plan),
+                ))
             self._game_counter += 1
             self.actor = _make_actor(
                 game_seed(self.base_seed, self.stream_index, self._game_counter),
                 self.seats,
-                self.scripted_by_seat,
+                self._new_game_bots(),
                 dr_food_density=self.dr_food_density,
             )
             # keep _stash — it carries the finished game's last transitions (done=1)

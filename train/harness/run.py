@@ -294,6 +294,11 @@ class RunManager:
         self.fresh = fresh
         self.paths = RunPaths.make(run_cfg.out_dir, run_cfg.name)
         self.base_cfg = run_cfg.base_train_config()
+        if self.base_cfg.league and not self.base_cfg.league_dir:
+            # league_dir is operational (hash-excluded): default it into the run
+            # dir so the pool + results travel with the run and survive resume.
+            self.base_cfg = replace(
+                self.base_cfg, league_dir=os.path.join(self.paths.root, "league"))
         self.config_hash = config_hash(self.base_cfg)
         self.arch = _arch_meta(self.base_cfg)
         self.provenance = registry_row(
@@ -304,6 +309,12 @@ class RunManager:
             self.paths.checkpoints, self.arch, self.provenance,
             keep=run_cfg.keep_checkpoints, interval_s=run_cfg.checkpoint_interval_s,
         )
+        # P6.4: the learner-side league coordinator (snapshots + result folding).
+        # Built lazily in run() so a config error surfaces before actors spawn.
+        self.league_coord = None
+        if self.base_cfg.league:
+            from train.harness.league_wire import coordinator_from_config
+            self.league_coord = coordinator_from_config(self.base_cfg)
 
     # -- registry row -------------------------------------------------------
     def _write_run_json(self, extra: Optional[Dict] = None) -> None:
@@ -382,6 +393,11 @@ class RunManager:
             rec = {"update": int(global_update),
                    "wall_s": round(time.monotonic() - t0, 3),
                    **{k: float(v) for k, v in metrics.items()}}
+            if self.league_coord is not None:
+                # Snapshot on cadence + fold finished-game results; the league
+                # scalars ride the same metrics record (the dashboard's feed).
+                league_metrics = self.league_coord.step(lrn.policy, global_update)
+                rec.update({k: float(v) for k, v in league_metrics.items()})
             self.logger.log(rec)
             self.ckptr.maybe_save(global_update, lrn.policy, lrn.optimizer,
                                   extra={"version": global_update})
