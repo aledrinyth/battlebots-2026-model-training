@@ -12,6 +12,7 @@ Usage:
 """
 from __future__ import annotations
 import argparse, json, statistics, subprocess, sys, tempfile, os
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -39,25 +40,37 @@ def run(a: str, b: str, seed: int, rounds: int, a_first: bool):
     return a_m, b_m, a_r, b_r
 
 
+def _run_star(job):
+    return run(*job)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--a", required=True)
     ap.add_argument("--b", required=True)
     ap.add_argument("--seeds", type=int, nargs="+", required=True)
     ap.add_argument("--rounds", type=int, default=600)
+    ap.add_argument("--workers", type=int, default=1,
+                    help="parallel match subprocesses (default 1 = sequential)")
     args = ap.parse_args()
+
+    jobs = [(args.a, args.b, seed, args.rounds, a_first)
+            for seed in args.seeds for a_first in (True, False)]
 
     A_mass, B_mass, A_rank, B_rank = [], [], [], []
     a_wins = b_wins = 0
-    for seed in args.seeds:
-        for a_first in (True, False):
-            am, bm, ar, br = run(args.a, args.b, seed, args.rounds, a_first)
-            A_mass += am; B_mass += bm; A_rank += ar; B_rank += br
-            if sum(am) > sum(bm): a_wins += 1
-            else: b_wins += 1
-            print(f"seed {seed} {'A-first' if a_first else 'B-first'}: "
-                  f"A total={sum(am):6.2f} rank={statistics.mean(ar):.2f} | "
-                  f"B total={sum(bm):6.2f} rank={statistics.mean(br):.2f}", flush=True)
+    if args.workers > 1:
+        with ProcessPoolExecutor(max_workers=args.workers) as ex:
+            results = list(ex.map(_run_star, jobs))
+    else:
+        results = [run(*j) for j in jobs]
+    for (a, b, seed, rounds, a_first), (am, bm, ar, br) in zip(jobs, results):
+        A_mass += am; B_mass += bm; A_rank += ar; B_rank += br
+        if sum(am) > sum(bm): a_wins += 1
+        else: b_wins += 1
+        print(f"seed {seed} {'A-first' if a_first else 'B-first'}: "
+              f"A total={sum(am):6.2f} rank={statistics.mean(ar):.2f} | "
+              f"B total={sum(bm):6.2f} rank={statistics.mean(br):.2f}", flush=True)
 
     print("\n==== AGGREGATE ====")
     print(f"A = {args.a}")

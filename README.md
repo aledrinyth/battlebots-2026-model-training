@@ -4,9 +4,9 @@ Need a bot that grows early and survives actual opponents. The training score al
 
 ## Where I'm at
 
-Seed the league with meta clones instead of waiting for self-play to invent useful opposition. Keep live snapshots when adding clone entries; rerunning the seeder should be safe.
+Candidate/ensemble/survivability tools. Several experiments; don't crown every candidate just because it has a file.
 
-S2 heuristic config is staged, runbook included. Config present does not mean training was launched. Need clone weights under the expected paths; those generated datasets aren't copied into these source folders.
+Paired seeds, swap seats, inspect early growth AND deaths. Parallel match runs help, but don't mix them with sensitive timing gates. Keep deployed version labels straight. If a change improves a passive-opponent score but dies faster against clones, that's probably not the next submission.
 
 ## Running things
 
@@ -16,4 +16,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 37. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This groups uncommitted work into a logical stage. Git reference: `605697b`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 38. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This groups uncommitted work into a logical stage. Git reference: `605697b`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
