@@ -1,0 +1,71 @@
+# P6.4 Stage-2 — the main self-play league run (playbook P6.4: "the big run").
+#
+# Seats: 4 policy (the learning batch) + 4 opponents drawn PER GAME by the
+# league — PFSP over frozen snapshots of this very run, with the scripted
+# anchors below guaranteed >= 10% of the table (they are reality's fixed
+# reference points; the pool can never drift away from them). The pool
+# bootstraps from the warm-start weights at update 1 and grows every 30 min.
+#
+# Warm start: the S1 champion. PLACEHOLDER until the S1 sweep + promote pick
+# it — launch with the winner explicitly:
+#
+#   mkdir -p runs/stage2_league
+#   TRAIN_TORCH_THREADS=16 tmux new -s s2 'python -m train.harness.run \
+#     configs/stage2_league.yaml --init-weights data/s1_champion.pt \
+#     --duration 43200 2>&1 | tee -a runs/stage2_league/console.log'
+#
+# (Re-running the identical command resumes — checkpoints, league.json, and
+# the fold offsets all persist under runs/stage2_league/.)
+#
+# Monitoring (second shell; alerts exit 2 on a critical signature):
+#   python tools/dashboard.py runs/stage2_league --watch 60
+#
+# Acceptance (playbook P6.4): >= 48 h continuous operation without manual
+# intervention; checkpoints promoting through tools/promote.py against the
+# reigning champion. Collapse playbook if an alert fires: raise anchor share /
+# snapshot cadence first, exploiter (P6.5) second.
+#
+# Knobs kept from the S1-proven fine-tune regime (lr 1e-4, ent 0.003,
+# reward_clip 10). New vs S1: league seats on + dr_food_density 0.2 (P6.1,
+# the playbook's pipeline insurance — training-only; eval/compliance still see
+# the stock arena). Both change the config hash: this is a new experiment.
+name: stage2_heuristic
+stage: S2-league
+out_dir: runs
+total_updates: 0            # bounded by --duration per invocation
+duration_s: 0
+checkpoint_interval_s: 300
+keep_checkpoints: 100
+log_every: 20
+device: cpu
+
+train:
+  num_actors: 124           # box: ~(cores - 4); batch = num_actors * 4
+  policy_seats: [0, 1, 2, 3]
+  # Anchors = our shipped heuristics (weighted: v8×2, v7×2, v6×1 — each listing
+  # is one ticket in the uniform anchor draw) + 3 scripted baselines. greedy_food
+  # removed. v6/v7/v8 load from dist/potential_field_v*.py (must be on the box).
+  scripted_names: [potential_field_v8, potential_field_v8, potential_field_v7,
+                   potential_field_v7, potential_field_v6, cautious, chaser, coward]
+  base_seed: 20260721
+  barrier_timeout_s: 300
+  rollout_len: 32
+  gamma: 0.999
+  gae_lambda: 0.95
+  clip: 0.2
+  value_coef: 0.5
+  entropy_coef: 0.003
+  max_grad_norm: 0.5
+  lr: 0.0001
+  ppo_epochs: 2
+  mass_scale: 1.0
+  reward_clip: 10.0
+  food_shaping_coef: 0.0
+  explore_persist_prob: 0.0
+  explore_oracle_prob: 0.0
+  dr_food_density: 0.2      # P6.1 on, per the playbook (S1 handoff decision)
+  league: true              # P6.4: PFSP pool + anchors fill seats 4-7 per game
+  league_snapshot_interval_s: 1800
+  league_anchor_min_frac: 0.375   # ceil(0.375*8)=3 of the 4 opponent seats are
+                                  # anchors (0.25 would give only 2); 1 seat = PFSP pool
+  league_ema: 0.1

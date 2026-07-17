@@ -4,11 +4,9 @@ Need a bot that grows early and survives actual opponents. The training score al
 
 ## Where I'm at
 
-Flat builders for the portal. The earlier package injection approach can upset the import scanner, so put the needed definitions into a plain single-file namespace.
+Seed the league with meta clones instead of waiting for self-play to invent useful opposition. Keep live snapshots when adding clone entries; rerunning the seeder should be safe.
 
-Dependency order matters. Strip internal package imports carefully, preserve constants, embed NN weights, and compare generated actions against the source bot. For the heuristic, keep the generated output small and scan it too.
-
-Gate the exact file. This note keeps coming back because it's easy to skip.
+S2 heuristic config is staged, runbook included. Config present does not mean training was launched. Need clone weights under the expected paths; those generated datasets aren't copied into these source folders.
 
 ## Running things
 
@@ -18,4 +16,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 36. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This groups uncommitted work into a logical stage. Git reference: `605697b`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 37. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This groups uncommitted work into a logical stage. Git reference: `605697b`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
