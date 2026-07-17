@@ -1,0 +1,537 @@
+from __future__ import annotations
+
+import gc
+import json
+import math
+import sys
+import types
+from dataclasses import dataclass
+from typing import Tuple
+
+from helper.interface import Connection
+from lib.config.arena import ARENA_SIZE, VIRUS_SIZE
+from lib.config.player import (
+    EAT_SIZE_RATIO,
+    SPLIT_EJECT_DRAG,
+    SPLIT_EJECT_SPEED,
+    SPLIT_MIN_MASS,
+)
+from lib.interface.events.moves.move_player import MovePlayer
+from lib.interface.queries.query_move import QueryMovePlayer
+from lib.models.penguin_model import DirectionModel
+
+# Engine-exact constants (derived exactly as bot/spec.py does), exposed under a
+# `spec` namespace so the spliced bot/heuristic.py body is byte-for-byte verbatim.
+spec = types.SimpleNamespace(
+    ARENA_SIZE=ARENA_SIZE,
+    EAT_SIZE_RATIO=EAT_SIZE_RATIO,
+    SPLIT_MIN_MASS=SPLIT_MIN_MASS,
+    SPLIT_REACH=SPLIT_EJECT_SPEED / (1.0 - SPLIT_EJECT_DRAG),
+    VIRUS_POP_MASS_THRESHOLD=VIRUS_SIZE * VIRUS_SIZE * EAT_SIZE_RATIO,
+)
+
+
+# ===================== bot/heuristic.py (verbatim) =====================
+@dataclass(frozen=True)
+class HeuristicParams:
+    """Tunable weights and ranges. Defaults are hand-set from the replay
+    mining (aggressive prey-seeking, moderate wall use, sparing splits) and
+    are the knobs to sweep against the meta-clone field."""
+
+    w_food: float = 1.0
+    w_prey: float = 6.0
+    w_threat: float = 45.0
+    w_virus: float = 30.0
+    w_wall: float = 10.0
+    food_falloff: float = 1.0        # exponent on distance for food pull
+    prey_falloff: float = 1.0
+    threat_falloff: float = 2.0      # nearer threats dominate hard
+    virus_range: float = 4.5         # ignore viruses beyond this
+    virus_eat_max_mass: float = 12.0  # when safe, eat viruses up to this mass for
+                                      # the +VIRUS_MASS_GAIN pop; above it a big
+                                      # blob avoids (the pop is not worth scattering)
+    wall_margin: float = 6.0         # repel within this of a wall
+    threat_min_gap: float = 0.5      # floor on edge-distance (avoid blow-up)
+    split_blob_cap: int = 3          # never split when already this fragmented
+    split_safety_buffer: float = 3.0  # extra clearance a child needs from any eater
+    severe_threat_weight: float = 1.0     # can eat our largest blob
+    minor_threat_weight: float = 0.4      # can only eat a smaller blob
+    # --- threat gate (shared by the wall push and the virus detour) -----------
+    eater_range_pad: float = 8.0       # an enemy that can eat us counts as "in
+                                       # range" within its strike edge + this
+    safe_wall_scale: float = 0.15      # anti-corner push multiplier when NO eater
+                                       # is in range (1.0 = never relax). Corners
+                                       # only bite under a predator, so with none
+                                       # near we all but drop the push (which else
+                                       # cancels prey-pull and dithers at the wall)
+    # --- two-phase controller (early game) ---
+    momentum: float = 0.1            # carry this fraction of last tick's heading
+                                     # into this one (a low-pass filter that damps
+                                     # the residual jitter at field equilibria)
+    feed_until_round: int = 100      # below this round: deterministic FEED mode
+    feed_flee_margin: float = 4.0    # FEED flees an eater within its reach + this
+    virus_seek_until_round: int = 400  # before this round, the first time we are
+                                       # big enough to eat a virus, detour to pop
+                                       # one (+VIRUS_MASS_GAIN) then hand off to HUNT
+
+
+def _eater_in_range(query, params: HeuristicParams = HeuristicParams()) -> bool:
+    """True if a visible enemy that can eat one of our blobs is within striking
+    range — its body, plus split reach if a half still eats our biggest blob,
+    plus ``eater_range_pad``. The single "are we actually in danger?" test: it
+    gates the anti-corner wall push (on only when true) and the virus detour
+    (taken only when false)."""
+    blobs = query.you.blobs
+    if not blobs:
+        return False
+    my_min_mass = min(b.radius * b.radius for b in blobs)
+    my_max_mass = max(b.radius * b.radius for b in blobs)
+    ratio = spec.EAT_SIZE_RATIO
+    cx, cy = query.you.pos
+    for b in query.visible_blobs:
+        bm = b.radius * b.radius
+        if bm < ratio * my_min_mass:
+            continue  # cannot eat any blob of ours
+        reach = b.radius
+        if bm >= spec.SPLIT_MIN_MASS and (bm * 0.5) >= ratio * my_max_mass:
+            reach = b.radius + spec.SPLIT_REACH
+        d = math.hypot(b.pos[0] - cx, b.pos[1] - cy)
+        if d - reach <= params.eater_range_pad:
+            return True
+    return False
+
+
+def heuristic_action(query, params: HeuristicParams = HeuristicParams()
+                     ) -> Tuple[float, float, bool]:
+    """Return ``(dx, dy, split)`` — a heading vector (magnitude irrelevant, the
+    engine normalizes) and whether to split this turn."""
+    you = query.you
+    blobs = you.blobs
+    if not blobs:  # never queried while dead, but stay defensive
+        return 0.0, 0.0, False
+
+    cx, cy = you.pos
+    radii = [b.radius for b in blobs]
+    my_max_r = max(radii)
+    my_max_mass = my_max_r * my_max_r
+    my_min_mass = min(r * r for r in radii)
+    poppable = my_max_mass > spec.VIRUS_POP_MASS_THRESHOLD
+    ratio = spec.EAT_SIZE_RATIO
+    eater_near = _eater_in_range(query, params)  # shared by the virus + wall gates
+
+    fx = fy = 0.0
+
+    # --- food: grow toward the nearest pellets --------------------------------
+    for f in query.visible_food:
+        dx = f.pos[0] - cx
+        dy = f.pos[1] - cy
+        d = math.hypot(dx, dy)
+        if d < 1e-9:
+            continue
+        w = params.w_food / (d ** params.food_falloff)
+        fx += dx / d * w
+        fy += dy / d * w
+
+    # --- enemies: prey pulls, threats push ------------------------------------
+    for b in query.visible_blobs:
+        dx = b.pos[0] - cx
+        dy = b.pos[1] - cy
+        d = math.hypot(dx, dy)
+        if d < 1e-9:
+            d = 1e-9
+        bm = b.radius * b.radius
+
+        if my_max_mass >= ratio * bm:
+            # prey: bigger, closer prey pulls harder
+            w = params.w_prey * bm / (d ** params.prey_falloff)
+            fx += dx / d * w
+            fy += dy / d * w
+        elif bm >= ratio * my_min_mass:
+            # threat: its danger radius includes split reach if a half still
+            # eats our biggest blob
+            reach = b.radius
+            if bm >= spec.SPLIT_MIN_MASS and (bm * 0.5) >= ratio * my_max_mass:
+                reach = b.radius + spec.SPLIT_REACH
+            gap = max(d - reach, params.threat_min_gap)
+            sev = (params.severe_threat_weight
+                   if bm >= ratio * my_max_mass
+                   else params.minor_threat_weight)
+            w = params.w_threat * sev / (gap ** params.threat_falloff)
+            fx -= dx / d * w
+            fy -= dy / d * w
+
+    # --- viruses: eat for the mass when safe, else avoid ----------------------
+    #
+    # Only relevant when poppable (mass > 2.7) — below that a virus is inert to
+    # us. A pop is +VIRUS_MASS_GAIN mass but scatters us to the blob cap, so it is
+    # only worth it while (a) no eater is in range to punish the scatter and (b)
+    # we are still small enough for the fixed +2.25 to be a real relative gain
+    # (``virus_eat_max_mass``). Then we *attract* to the virus and eat it;
+    # otherwise we repel. The weight ramps smoothly to zero at ``virus_range`` so
+    # there is no hard cliff for the field to bang-bang across (the old jitter).
+    if poppable:
+        eat_virus = not eater_near and my_max_mass <= params.virus_eat_max_mass
+        sign = 1.0 if eat_virus else -1.0
+        for v in query.visible_viruses:
+            dx = v.pos[0] - cx
+            dy = v.pos[1] - cy
+            d = math.hypot(dx, dy)
+            if d < 1e-9 or d > params.virus_range:
+                continue
+            w = params.w_virus / (d * d) * (1.0 - d / params.virus_range)
+            fx += sign * dx / d * w
+            fy += sign * dy / d * w
+
+    # --- walls: push inward near the edges (anti-corner) ----------------------
+    #
+    # The anti-corner push exists for one reason: a corner is a death trap when a
+    # predator commits, because we lose our escape arc. But it keys off *our*
+    # position, not the danger, so it fires the same whether we are being driven
+    # into a corner (keep it) or driving prey into one (it then just fights our
+    # own prey-pull and the two cancel at the margin, dithering us in a local
+    # minimum). And a corner is only dangerous *because of a predator* — which the
+    # threat term already handles. So we gate the push on the danger itself: full
+    # strength only when an enemy that can eat us is in range, all but off
+    # (``safe_wall_scale``) otherwise, which lets prey-pull win into a corner.
+    arena = spec.ARENA_SIZE
+    m = params.wall_margin
+    wall_scale = 1.0 if eater_near else params.safe_wall_scale
+    ww = params.w_wall * wall_scale
+    if cx < m:
+        fx += ww * (m - cx) / m
+    if arena - cx < m:
+        fx -= ww * (m - (arena - cx)) / m
+    if cy < m:
+        fy += ww * (m - cy) / m
+    if arena - cy < m:
+        fy -= ww * (m - (arena - cy)) / m
+
+    # --- split-to-kill: only when a half-mass child still lands the eat and
+    #     nothing can punish the split ----------------------------------------
+    split = _should_split(query, cx, cy, my_max_r, my_max_mass, len(blobs),
+                          ratio, params)
+    if split is not None:
+        # bias the heading toward the chosen prey and split
+        bx, by = split
+        dx, dy = bx - cx, by - cy
+        d = math.hypot(dx, dy) or 1e-9
+        fx += dx / d * params.w_prey * my_max_mass  # dominate: commit to the kill
+        fy += dy / d * params.w_prey * my_max_mass
+        return fx, fy, True
+
+    if fx * fx + fy * fy < 1e-12:
+        # nothing in view pulling us — drift to arena center to find food
+        dx = arena / 2.0 - cx
+        dy = arena / 2.0 - cy
+        if dx * dx + dy * dy < 1e-6:
+            return 0.0, 0.0, False
+        return dx, dy, False
+    return fx, fy, False
+
+
+def _should_split(query, cx, cy, my_max_r, my_max_mass, n_blobs, ratio,
+                  params: HeuristicParams):
+    """Nearest safe split-kill prey position, or ``None``.
+
+    Requires: our biggest blob can spawn two useful children (mass ≥
+    ``2*SPLIT_MIN_MASS``), we are not already over-fragmented, the prey is
+    inside split reach but not already covered, a half-mass child still
+    out-masses it by the ratio, and no enemy could eat a child that lands
+    near us."""
+    if my_max_mass < 2.0 * spec.SPLIT_MIN_MASS or n_blobs > params.split_blob_cap:
+        return None
+    child_mass = my_max_mass * 0.5
+
+    best = None
+    best_d2 = math.inf
+    for b in query.visible_blobs:
+        bm = b.radius * b.radius
+        dx = b.pos[0] - cx
+        dy = b.pos[1] - cy
+        d = math.hypot(dx, dy)
+        if not (my_max_r < d <= my_max_r + spec.SPLIT_REACH):
+            continue
+        if child_mass < ratio * bm:
+            continue
+        d2 = dx * dx + dy * dy
+        if d2 < best_d2:
+            best_d2 = d2
+            best = (b.pos[0], b.pos[1])
+
+    if best is None:
+        return None
+
+    # safety: after splitting, a child (mass child_mass) must not sit inside
+    # any bigger enemy's strike range
+    for eb in query.visible_blobs:
+        ebm = eb.radius * eb.radius
+        if ebm < ratio * child_mass:
+            continue
+        d = math.hypot(eb.pos[0] - cx, eb.pos[1] - cy)
+        if d <= eb.radius + spec.SPLIT_REACH + params.split_safety_buffer:
+            return None
+    return best
+
+
+# --- early-game FEED mode -----------------------------------------------------
+
+def _flee_vector(query, cx, cy, my_min_mass, params: HeuristicParams):
+    """Summed repulsion from every visible enemy that can eat us and is within
+    striking range (its body, +split reach if a half still eats us), or ``None``
+    when none is close. Shared by FEED and the virus detour so both survive while
+    small — a beeline is never worth diving into an eater."""
+    ratio = spec.EAT_SIZE_RATIO
+    fx = fy = 0.0
+    fleeing = False
+    for b in query.visible_blobs:
+        bm = b.radius * b.radius
+        if bm < ratio * my_min_mass:
+            continue  # cannot eat us — ignore while small
+        dx = cx - b.pos[0]
+        dy = cy - b.pos[1]
+        d = math.hypot(dx, dy) or 1e-9
+        reach = b.radius
+        if bm >= spec.SPLIT_MIN_MASS and (bm * 0.5) >= ratio * my_min_mass:
+            reach = b.radius + spec.SPLIT_REACH
+        if d <= reach + params.feed_flee_margin:
+            fleeing = True
+            w = 1.0 / (d * d)  # nearer eaters dominate
+            fx += dx / d * w
+            fy += dy / d * w
+    return (fx, fy) if fleeing else None
+
+
+def greedy_feed_action(query, params: HeuristicParams = HeuristicParams()
+                       ) -> Tuple[float, float, bool]:
+    """Deterministic early-game forager: flee any enemy that can eat us if it is
+    within striking range, else head straight for the nearest food, else drift to
+    center. Never splits.
+
+    The potential-field hunter needs mass before its predation pays off, and its
+    many-force sum is jittery when everything on screen is small; this clean
+    greedy rule grows a fast, stable base first.
+    """
+    you = query.you
+    blobs = you.blobs
+    if not blobs:
+        return 0.0, 0.0, False
+    cx, cy = you.pos
+    my_min_mass = min(b.radius * b.radius for b in blobs)
+
+    flee = _flee_vector(query, cx, cy, my_min_mass, params)
+    if flee is not None:
+        return flee[0], flee[1], False
+
+    # else: nearest food
+    best = None
+    best_d2 = math.inf
+    for f in query.visible_food:
+        dx = f.pos[0] - cx
+        dy = f.pos[1] - cy
+        d2 = dx * dx + dy * dy
+        if d2 < best_d2:
+            best_d2 = d2
+            best = (dx, dy)
+    if best is not None:
+        return best[0], best[1], False
+
+    dx = spec.ARENA_SIZE / 2.0 - cx
+    dy = spec.ARENA_SIZE / 2.0 - cy
+    if dx * dx + dy * dy < 1e-6:
+        return 0.0, 0.0, False
+    return dx, dy, False
+
+
+# --- virus detour: pop a virus for the mass bump, then hand off to HUNT --------
+
+def _nearest_consumable_virus(query):
+    """Position ``(x, y)`` of the nearest virus our biggest blob can eat, or
+    ``None``. Engine rule (``StateMutator._can_consume_virus``): a blob eats a
+    virus when ``mass > virus_radius**2 * EAT_SIZE_RATIO`` — i.e. mass > 2.7 for
+    the stock 1.5-radius virus, the same value as VIRUS_POP_MASS_THRESHOLD."""
+    blobs = query.you.blobs
+    if not blobs:
+        return None
+    my_max_mass = max(b.radius * b.radius for b in blobs)
+    ratio = spec.EAT_SIZE_RATIO
+    cx, cy = query.you.pos
+    best = None
+    best_d2 = math.inf
+    for v in query.visible_viruses:
+        if my_max_mass <= (v.radius * v.radius) * ratio:
+            continue  # too small to eat this virus
+        dx = v.pos[0] - cx
+        dy = v.pos[1] - cy
+        d2 = dx * dx + dy * dy
+        if d2 < best_d2:
+            best_d2 = d2
+            best = (v.pos[0], v.pos[1])
+    return best
+
+
+def virus_seek_action(query, virus_pos,
+                      params: HeuristicParams = HeuristicParams()
+                      ) -> Tuple[float, float, bool]:
+    """Beeline to ``virus_pos`` to pop it — but flee an eater within strike range
+    first (same survival guard as FEED). We never split; contact triggers the
+    engine's own pop (splitting us to the blob cap for a +VIRUS_MASS_GAIN bump)."""
+    you = query.you
+    blobs = you.blobs
+    if not blobs:
+        return 0.0, 0.0, False
+    cx, cy = you.pos
+    my_min_mass = min(b.radius * b.radius for b in blobs)
+
+    flee = _flee_vector(query, cx, cy, my_min_mass, params)
+    if flee is not None:
+        return flee[0], flee[1], False
+
+    return virus_pos[0] - cx, virus_pos[1] - cy, False
+
+
+def _has_eatable_enemy(query) -> bool:
+    """True if our largest blob can eat some visible enemy blob (the exact mass
+    rule) — the trigger to commit to hunting."""
+    blobs = query.you.blobs
+    if not blobs:
+        return False
+    my_max_mass = max(b.radius * b.radius for b in blobs)
+    ratio = spec.EAT_SIZE_RATIO
+    return any(my_max_mass >= ratio * (b.radius * b.radius)
+               for b in query.visible_blobs)
+
+
+class HeuristicController:
+    """Phased policy: deterministic greedy FEED early, an optional one-shot VIRUS
+    detour, then latch to the potential-field HUNT and never revert.
+
+    FEED (default) forages cleanly while small. Before ``virus_seek_until_round``,
+    the first time we are big enough to eat a virus (mass > 2.7) with one in view,
+    we detour to pop it — a +VIRUS_MASS_GAIN bump the engine pays out by splitting
+    us to the blob cap (~16 pieces from one blob). That pop is the only way a
+    pre-HUNT bot gains blobs, so we use ``len(blobs) > 1`` as the "virus eaten"
+    signal and hand the scattered pieces straight to HUNT. Otherwise, once the
+    round reaches ``feed_until_round`` **and** there is prey our biggest blob can
+    eat in view, we commit to HUNT for the rest of the game (``_hunting`` stays
+    set). One instance per seat per game — :meth:`reset` returns it to FEED for a
+    fresh game; respawns within a game do **not** revert (the round never rewinds).
+    """
+
+    def __init__(self, params: HeuristicParams | None = None) -> None:
+        self._params = params or HeuristicParams()
+        self._hunting = False
+        self._virus_seeking = False
+        self._prev_move = (0.0, 0.0)
+
+    def reset(self) -> None:
+        self._hunting = False
+        self._virus_seeking = False
+        self._prev_move = (0.0, 0.0)
+
+    def act(self, query) -> Tuple[float, float, bool]:
+        """Phase policy, then a momentum low-pass on the heading. At a field
+        equilibrium the raw heading is small and flips sign tick-to-tick (jitter);
+        carrying a fraction of the previous (larger, committed) heading forward
+        lets the stronger recent direction dominate and damps the dither. The
+        engine only uses the heading's *direction*, so blending on the raw vector
+        (not a unit) is what gives small residuals little weight."""
+        dx, dy, split = self._policy(query)
+        m = self._params.momentum
+        mag = math.hypot(dx, dy) or 1e-9
+        dx, dy = dx / mag, dy / mag
+        dx += m * self._prev_move[0]
+        dy += m * self._prev_move[1]
+        self._prev_move = (dx, dy)
+        return dx, dy, split
+
+    def _policy(self, query) -> Tuple[float, float, bool]:
+        p = self._params
+        if self._hunting:
+            return heuristic_action(query, p)
+
+        blobs = query.you.blobs
+
+        # The virus popped us (FEED and the detour never split, so >1 blob can
+        # only mean a virus): the detour is done — hand the pieces to HUNT.
+        if self._virus_seeking and len(blobs) > 1:
+            self._virus_seeking = False
+            self._hunting = True
+            return heuristic_action(query, p)
+
+        # Detour to the nearest eatable virus while it is early, one is in view,
+        # and it is safe — the pop scatters us to the blob cap, so never take it
+        # (nor keep taking it) with an eater in range.
+        virus = _nearest_consumable_virus(query)
+        safe = not _eater_in_range(query, p)
+        if virus is not None and safe and query.round < p.virus_seek_until_round:
+            self._virus_seeking = True
+        if self._virus_seeking and virus is not None and safe:
+            return virus_seek_action(query, virus, p)
+        self._virus_seeking = False  # no reachable/safe virus — resume normal flow
+
+        # normal FEED -> HUNT latch
+        if query.round >= p.feed_until_round and _has_eatable_enemy(query):
+            self._hunting = True
+            return heuristic_action(query, p)
+        return greedy_feed_action(query, p)
+
+# =================== end bot/heuristic.py ==============================
+
+
+# --- kit pipe loop + inlined fail-safe (bot never leaves a query unanswered) ---
+
+def _zero_move(player_id: int) -> MovePlayer:
+    return MovePlayer(player_id=player_id,
+                      direction=DirectionModel(x=0.0, y=0.0), split=False)
+
+
+def _flee_center(query, player_id: int) -> MovePlayer:
+    try:
+        x, y = query.you.pos
+        dx = spec.ARENA_SIZE / 2.0 - float(x)
+        dy = spec.ARENA_SIZE / 2.0 - float(y)
+        if abs(dx) > 1e-9 or abs(dy) > 1e-9:
+            return MovePlayer(player_id=player_id,
+                              direction=DirectionModel(x=dx, y=dy), split=False)
+    except Exception:
+        pass
+    return _zero_move(player_id)
+
+
+def main() -> None:
+    conn = Connection()  # open pipes first — the engine's open-pipe alarm is live
+    gc.collect()
+    gc.disable()
+    controller = HeuristicController()  # FEED->HUNT latch; one game = one process
+    player_id = None
+
+    while True:
+        try:
+            raw = conn._receive()
+        except EOFError:
+            return
+        query = None
+        try:
+            query = QueryMovePlayer.model_validate_json(raw)
+            player_id = query.you.player_id
+        except Exception:
+            if player_id is None:
+                try:
+                    player_id = int(json.loads(raw)["you"]["player_id"])
+                except Exception:
+                    player_id = 0
+        try:
+            dx, dy, split = controller.act(query)
+            move = MovePlayer(player_id=player_id,
+                              direction=DirectionModel(x=float(dx), y=float(dy)),
+                              split=bool(split))
+            if move.player_id != player_id:
+                raise ValueError("bad player_id")
+        except Exception:
+            move = _flee_center(query, player_id) if query is not None \
+                else _zero_move(player_id)
+        conn.send_move(move)
+
+
+if __name__ == "__main__":
+    main()

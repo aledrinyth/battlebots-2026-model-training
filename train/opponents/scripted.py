@@ -35,11 +35,16 @@ the mass-weighted centroid (``player.x, player.y``) — exactly what
 
 from __future__ import annotations
 
+import functools
+import importlib.util
 import math
 import random
+import sys
+from pathlib import Path
 from typing import List, Optional, Sequence, Tuple
 
 from bot import spec
+from bot.heuristic import HeuristicController, HeuristicParams
 from lib.interface.events.moves.move_player import MovePlayer
 from lib.interface.queries.query_move import QueryMovePlayer
 from lib.models.penguin_model import DirectionModel
@@ -262,6 +267,98 @@ class ChaserBot(ScriptedBot):
         return _toward_center_or_stay(query)
 
 
+class PotentialFieldBot(ScriptedBot):
+    """Training-free two-phase controller (``bot.heuristic.HeuristicController``):
+    deterministic greedy FEED while small/early, then latches to the
+    potential-field HUNT (food/prey attraction, threat/virus/wall repulsion,
+    conservative split-to-kill) once there is prey to eat. Every weight is a knob
+    (:class:`~bot.heuristic.HeuristicParams`); carries no learned weights, so it
+    ships as a tiny file. Stateful (the FEED→HUNT latch), so one instance per
+    seat — the harness builds a fresh bot per game and calls :meth:`reset`."""
+
+    name = "potential_field"
+
+    def __init__(self, params: HeuristicParams | None = None) -> None:
+        self._controller = HeuristicController(params)
+
+    def reset(self) -> None:
+        self._controller.reset()
+
+    def act(self, query: QueryMovePlayer) -> MovePlayer:
+        dx, dy, split = self._controller.act(query)
+        return _move(query, dx, dy, split)
+
+
+#: Cache: version tag -> HeuristicController class loaded from its dist file.
+_DIST_CONTROLLER_CACHE: dict = {}
+
+
+def _load_dist_controller(version: str):
+    """Load ``HeuristicController`` from a *deployed* ``dist/potential_field_<v>.py``.
+
+    Each shipped heuristic is a distinct code version (v7 added the death-zone
+    veto + virus-pop gate over v6; v8 the gravity-well FEED, etc.), so pinning a
+    training opponent to the exact submitted file — rather than re-deriving it —
+    guarantees the league trains against the real bot. The dist file is a valid
+    module defining ``HeuristicController``; we load it lazily (so importing this
+    module never needs ``dist/``) and cache per version. The module must be
+    registered in ``sys.modules`` *before* exec so its ``@dataclass`` params
+    resolve their ``__module__``.
+    """
+    cls = _DIST_CONTROLLER_CACHE.get(version)
+    if cls is None:
+        path = _REPO_ROOT / "dist" / f"potential_field_{version}.py"
+        if not path.exists():
+            raise FileNotFoundError(
+                f"deployed heuristic not found: {path} "
+                f"(rsync dist/potential_field_{version}.py to run this opponent)"
+            )
+        mod_name = f"_pf_dist_{version}"
+        spec_ = importlib.util.spec_from_file_location(mod_name, path)
+        mod = importlib.util.module_from_spec(spec_)
+        sys.modules[mod_name] = mod
+        spec_.loader.exec_module(mod)
+        cls = mod.HeuristicController
+        _DIST_CONTROLLER_CACHE[version] = cls
+    return cls
+
+
+class _DistHeuristicBot(ScriptedBot):
+    """A pinned, deployed potential-field version as a league opponent.
+
+    Subclasses set ``version``; the controller is loaded from the matching
+    dist file. Stateful (FEED→HUNT latch), so one instance per seat and the
+    harness calls :meth:`reset` per game — same contract as
+    :class:`PotentialFieldBot`."""
+
+    version = ""
+
+    def __init__(self) -> None:
+        self._controller = _load_dist_controller(self.version)()
+
+    def reset(self) -> None:
+        self._controller.reset()
+
+    def act(self, query: QueryMovePlayer) -> MovePlayer:
+        dx, dy, split = self._controller.act(query)
+        return _move(query, dx, dy, split)
+
+
+class PotentialFieldV6Bot(_DistHeuristicBot):
+    name = "potential_field_v6"
+    version = "v6"
+
+
+class PotentialFieldV7Bot(_DistHeuristicBot):
+    name = "potential_field_v7"
+    version = "v7"
+
+
+class PotentialFieldV8Bot(_DistHeuristicBot):
+    name = "potential_field_v8"
+    version = "v8"
+
+
 #: Name → zero-arg factory, for curriculum / league / ladder configs by string.
 BOTS = {
     "random": RandomBot,
@@ -270,11 +367,75 @@ BOTS = {
     "cautious": CautiousBot,
     "coward": CowardBot,
     "chaser": ChaserBot,
+    "potential_field": PotentialFieldBot,
+    "potential_field_v6": PotentialFieldV6Bot,
+    "potential_field_v7": PotentialFieldV7Bot,
+    "potential_field_v8": PotentialFieldV8Bot,
 }
 
 
+#: Prefix that turns an opponent *name* into a frozen policy checkpoint. The
+#: rest of the string is the exported actor-weights ``.npz`` (see
+#: ``train/export.py``), resolved against the repo root when relative. This is
+#: the single seam that lets a trained clone ride ``evaluate``/``promote`` as a
+#: named opponent: both resolve every opponent through :func:`make_bot`, and
+#: the name is a plain string, so it survives the spawn-worker boundary intact
+#: (no shared state, no torch in the worker — ``NumpyPolicy`` is numpy-only).
+FROZEN_PREFIX = "frozen:"
+#: Like ``frozen:`` but applies the Track-2 deploy rails (``bot.rails``) — the
+#: exact shipped override — so railed-vs-plain gates paired on the meta field.
+RAILED_PREFIX = "railed:"
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+@functools.lru_cache(maxsize=64)
+def _load_frozen_policy(path: str):
+    """Load (and per-process cache) a frozen ``NumpyPolicy`` by resolved path.
+
+    Mirrors ``train.harness.league_seats._frozen_bot``: the policy is
+    immutable (``NumpyPolicy.act`` is pure — recurrent hidden lives in each
+    :class:`~train.opponents.frozen.FrozenPolicyBot`), so one load can back
+    every seat that draws this clone within a worker. Imported lazily to keep
+    this module torch-free and dodge the frozen↔scripted import cycle.
+    """
+    from bot.inference import NumpyPolicy
+
+    return NumpyPolicy.load(path)
+
+
+def _resolve_frozen_path(spec_path: str) -> str:
+    from pathlib import Path
+
+    p = Path(spec_path)
+    if not p.is_absolute():
+        p = _REPO_ROOT / p
+    if not p.exists():
+        raise FileNotFoundError(
+            f"frozen opponent weights not found: {p} "
+            f"(export a checkpoint with `python -m train.export`)"
+        )
+    return str(p)
+
+
 def make_bot(name: str, **kwargs) -> ScriptedBot:
-    """Instantiate a scripted bot by name (see :data:`BOTS`)."""
+    """Instantiate an opponent by name.
+
+    A plain name resolves through the scripted :data:`BOTS` registry. A
+    ``frozen:<path>`` name loads that exported ``.npz`` as a
+    :class:`~train.opponents.frozen.FrozenPolicyBot` — the mechanism behind
+    R1 meta-clone opponents (impl doc §13.2 Option A).
+    """
+    if name.startswith(FROZEN_PREFIX):
+        from train.opponents.frozen import FrozenPolicyBot
+
+        path = _resolve_frozen_path(name[len(FROZEN_PREFIX):])
+        return FrozenPolicyBot(path, policy=_load_frozen_policy(path))
+    if name.startswith(RAILED_PREFIX):
+        from train.opponents.frozen import RailedPolicyBot
+
+        path = _resolve_frozen_path(name[len(RAILED_PREFIX):])
+        return RailedPolicyBot(path, policy=_load_frozen_policy(path))
     try:
         cls = BOTS[name]
     except KeyError:
@@ -284,6 +445,7 @@ def make_bot(name: str, **kwargs) -> ScriptedBot:
 
 __all__ = [
     "ScriptedBot",
+    "PotentialFieldBot",
     "RandomBot",
     "DontMoveBot",
     "GreedyFoodBot",

@@ -1,0 +1,189 @@
+[
+  {
+    "name": "dev_random_init",
+    "bundle": "dist/dev_random_init",
+    "git_commit": "2b5de806c570f1289a3ada8b2962bd05cb8764a2",
+    "weights_source": "/Users/alif_1/Documents/battlebots/tests/fixtures/adversarial/weights_random.npz",
+    "weights_sha256": "aa7b988209e3ace76500fb45c608b60ff55a8860f16dd56b9c7b0f43ac1112f6",
+    "manifest": {
+      "model_version": "agar_v1",
+      "obs_version": "obs_v1",
+      "act_version": "act_v1",
+      "heading_bins": 24,
+      "entity_hidden": 64,
+      "hidden_size": 256,
+      "source": "/private/tmp/claude-503/-Users-alif-1-Documents-battlebots/bd25d40f-b5f0-4cdb-a74c-ddeb9a5154b9/scratchpad/rand_init.pt",
+      "config_hash": "fixture-random-init-seed0",
+      "version": ""
+    },
+    "files": [
+      "__init__.py",
+      "adapters/__init__.py",
+      "adapters/act_v1.py",
+      "adapters/obs_v1.py",
+      "featurizer.py",
+      "inference.py",
+      "main.py",
+      "safety.py",
+      "spec.py",
+      "bot/weights.npz",
+      "main.py"
+    ],
+    "bundle_bytes": 2281637
+  },
+  {
+    "name": "g1_champion",
+    "bundle": "dist/g1_champion",
+    "git_commit": "76d509b6c04b0fe5861dbfe6b88f31413dcb05a2",
+    "weights_source": "/Users/alif_1/Documents/battlebots/data/weights_g1_champion.npz",
+    "weights_sha256": "455b2e9c44ddc9afc9413ed577e3791d680b7eb145f103c84993d9ba0eff6bec",
+    "manifest": {
+      "model_version": "agar_v1",
+      "obs_version": "obs_v1",
+      "act_version": "act_v1",
+      "heading_bins": 24,
+      "entity_hidden": 64,
+      "hidden_size": 256,
+      "source": "data/ckpt_v000123.pt",
+      "config_hash": "8f19bff4240be0dd",
+      "version": 123
+    },
+    "files": [
+      "__init__.py",
+      "adapters/__init__.py",
+      "adapters/act_v1.py",
+      "adapters/obs_v1.py",
+      "featurizer.py",
+      "inference.py",
+      "main.py",
+      "safety.py",
+      "spec.py",
+      "bot/weights.npz",
+      "main.py"
+    ],
+    "bundle_bytes": 2281530
+  },
+  {
+    "name": "s1_champion",
+    "bundle": "dist/s1_champion",
+    "git_commit": "be04ba14e94140669b3f8c55429313afebf98a35",
+    "weights_source": "/Users/alif_1/Documents/battlebots/data/weights_s1_champion.npz",
+    "weights_sha256": "b26453a421072a2eccfc0f3ab31df9d40487b25950e3a976df942f2fb2684bdb",
+    "manifest": {
+      "model_version": "agar_v1",
+      "obs_version": "obs_v1",
+      "act_version": "act_v1",
+      "heading_bins": 24,
+      "entity_hidden": 64,
+      "hidden_size": 256,
+      "source": "data/ckpt_v001470.pt",
+      "config_hash": "47b4c63d62829931",
+      "version": 1470
+    },
+    "files": [
+      "__init__.py",
+      "adapters/__init__.py",
+      "adapters/act_v1.py",
+      "adapters/obs_v1.py",
+      "featurizer.py",
+      "inference.py",
+      "main.py",
+      "safety.py",
+      "spec.py",
+      "bot/weights.npz",
+      "main.py"
+    ],
+    "bundle_bytes": 2281531
+  },
+  {
+    "name": "s1_champion",
+    "kind": "single-file",
+    "file": "dist/s1_champion.py",
+    "git_commit": "be04ba1",
+    "weights_source": "/Users/alif_1/Documents/battlebots/data/weights_s1_champion.npz",
+    "weights_sha256": "b26453a421072a2eccfc0f3ab31df9d40487b25950e3a976df942f2fb2684bdb",
+    "manifest": {
+      "model_version": "agar_v1",
+      "obs_version": "obs_v1",
+      "act_version": "act_v1",
+      "heading_bins": 24,
+      "entity_hidden": 64,
+      "hidden_size": 256,
+      "source": "data/ckpt_v001470.pt",
+      "config_hash": "47b4c63d62829931",
+      "version": 1470
+    },
+    "file_bytes": 2830081
+  },
+  {
+    "name": "potential_field_v1",
+    "kind": "single-file-heuristic",
+    "file": "dist/potential_field_v1.py",
+    "git_commit": "605697b",
+    "file_bytes": 22159
+  },
+  {
+    "name": "potential_field_v1",
+    "kind": "single-file-heuristic-flat",
+    "file": "dist/potential_field_v1.py",
+    "git_commit": "605697b",
+    "file_bytes": 9976
+  },
+  {
+    "name": "potential_field_v1",
+    "kind": "single-file-heuristic-flat",
+    "file": "dist/potential_field_v1.py",
+    "git_commit": "605697b",
+    "file_bytes": 9976
+  },
+  {
+    "name": "potential_field_v2",
+    "kind": "single-file-heuristic-flat",
+    "file": "dist/potential_field_v2.py",
+    "git_commit": "605697b",
+    "file_bytes": 13904
+  },
+  {
+    "name": "potential_field_v2",
+    "kind": "single-file-heuristic-flat",
+    "file": "dist/potential_field_v2.py",
+    "git_commit": "605697b",
+    "file_bytes": 13904
+  },
+  {
+    "name": "potential_field_v2",
+    "kind": "single-file-heuristic-flat",
+    "file": "dist/potential_field_v2.py",
+    "git_commit": "605697b",
+    "file_bytes": 15921
+  },
+  {
+    "name": "potential_field_v2",
+    "kind": "single-file-heuristic-flat",
+    "file": "dist/potential_field_v2.py",
+    "git_commit": "605697b",
+    "file_bytes": 19657
+  },
+  {
+    "name": "potential_field_v2",
+    "kind": "single-file-heuristic-flat",
+    "file": "dist/potential_field_v2.py",
+    "git_commit": "605697b",
+    "file_bytes": 20413
+  },
+  {
+    "name": "potential_field_v2",
+    "kind": "single-file-heuristic-flat",
+    "file": "dist/potential_field_v2.py",
+    "git_commit": "605697b",
+    "file_bytes": 22529
+  },
+  {
+    "name": "potential_field_v12",
+    "kind": "single-file-heuristic-flat",
+    "file": "dist/potential_field_v12.py",
+    "git_commit": "605697b",
+    "file_bytes": 63387,
+    "notes": "v11 + split-reach-aware death-zone veto while tiny. Early-game survivability: -7.1% deaths vs v11, beats v10 2.16x / v8 1.89x on 1400r mass; vs v11 full-game a wash (0.924x, 19-21 match split). Registered per user request as the survivability-focused variant."
+  }
+]

@@ -1,0 +1,1280 @@
+"""potential_field_v13a — v12 + earlier HUNT gate (feed_until_round 100->50).
+
+ORIGINAL v12 HEADER:
+potential_field_v12 — single-file agar.io submission (flat; kit + stdlib only).
+
+Training-free potential-field controller. v12 = v11 plus ONE early-game
+survivability addition, chosen from a 7-technique sweep (short 400-round 8-player
+games scored on per-100-round mass minus deaths; see
+``tools/survivability_eval.py``). It was the single best lever: it cut deaths ~7%
+vs v11 while *raising* mass (the two other winning levers — a mass-adaptive
+death-zone buffer and a mass-adaptive FEED flee margin — reduced deaths too but
+did not both improve mass, so only this one was promoted).
+
+C. **Split-reach-aware death-zone veto while tiny** (in ``_safe_heading``). The
+   death-zone veto normally EXCLUDES enemy split reach from its no-go disk (a
+   ~8.9-unit disk around every big enemy would paralyse the bot). But while our
+   smallest blob is tiny, the dominant way we die is an enemy *split-lunging*
+   onto us — so v12 credits a split-capable eater (one whose half-mass child
+   still eats our blob) a fraction ``dz_split_frac`` of ``SPLIT_REACH`` in its
+   disk, ramped linearly to ZERO by ``dz_split_ref`` mass. A grown bot is thus
+   completely unconstrained (byte-identical to v11 once past the ramp); only the
+   fragile early blobs get the extra standoff. A *safety* widening only — it can
+   never step us closer to a threat — so like every prior layer it never lowers
+   caution.
+
+--- v11 (retained) --------------------------------------------------------------
+Training-free potential-field controller. v11 = v10 (death-zone safety layer +
+gravity-well FEED + virus-as-shield + rank-aware endgame virus hunt) plus two
+additions:
+
+A. **Rank-aware defensive threat** (``_rank_posture``). v10 reads ``rankings``
+   only OFFENSIVELY (press a lead in the endgame); when behind it played exactly
+   like v8 and ate the same snowball losses. v11 scales the repulsive threat term
+   up by ``defensive_w_threat_mult`` while we sit in the bottom ``defensive_rank_frac``
+   of the field, so a losing bot plays more cautiously and stops feeding the
+   leaders. This raises a *safety* weight only — it never lowers caution — and is
+   disjoint by rank from the (leading-only) endgame press, so the two never fight.
+
+B. **Split-to-virus travel** (``_should_split_to_virus``). A split hurls a child
+   ~8.9 units (5.6 in the first 5 ticks) vs ~0.8-1.0/tick whole-blob movement, so
+   a split is 5-9 ticks of free travel. Splitting a small child onto a virus grabs
+   the virus mass while the big parent stays whole, and the pieces re-merge after
+   the 18-tick lockout. Gated exactly like the endgame pop: it only fires when the
+   child can *consume* the virus, the virus is inside the split-reach band, we are
+   not over-fragmented, ``_virus_pop_safe_window`` clears the full 18-tick lockout
+   under optimal enemy play, and no predator's disk covers the post-split child.
+   ``split_virus_shatter_mode`` selects whether we additionally require a small
+   post-consume shatter (``"low"``) or rely on the safety gate alone (``"gate"``).
+
+The v10 machinery is unchanged and documented below; v11 is a strict superset.
+
+--- v10 (retained) --------------------------------------------------------------
+Training-free potential-field controller. v10 = v8 (death-zone safety layer +
+gravity-well FEED + virus-as-shield) plus a **rank-aware endgame hunt mode**.
+
+Motivation: the v8 field plays identically whether it is winning or losing — it
+never reads ``query.rankings``, so it cannot press a lead. But mass decays
+0.2%/tick and only leaks to opponents as an *ordinal* rank, so a lead is worth
+defending, and the late game (round ≥ 1000) is where a leader should convert a
+safe advantage into more final mass — by safely popping viruses (blob-hunting was
+tried and lost; see point 2). v10 adds, on top of the whole v8 stack:
+
+1. **Endgame gate** (``_endgame_active``). Each tick we check whether we are
+   winning *and big enough that pressing pays*: we are the rank-1 leader AND at
+   least ``endgame_leader_min_mass`` (rank-1 in this engine only means
+   "least-small" — most of the game the leader is mass ~2-6, and cranking
+   aggression there just loses the lead), OR ``total_mass >= endgame_mass_floor
+   and round >= endgame_round_floor``. Both ``round`` and ``rankings`` are in
+   every ``QueryMovePlayer``. The gate is NOT a latch — if the lead slips we
+   revert to the safe v8 posture immediately.
+
+2. **Endgame params profile** (``_endgame_params``). While the gate is on we
+   swap to a ``dataclasses.replace`` of the params that raises the virus-eat
+   mass cap (``endgame_virus_eat_max_mass`` 12→40) so a big leader keeps eating
+   viruses for mass — but ONLY that. A 20-game A/B sweep (vs v8) showed raising
+   the endgame *prey* pull is a net loss at every level tried (0.64–0.92x v8
+   mass): in this engine "1st place" usually means mass ~3, and blob-chasing is
+   high-variance — the leader over-commits and dies. The *virus* half is a
+   low-variance +2.25 under the strict pop gate and scored 1.23x v8 mass, so
+   that is the whole endgame edge; the prey knobs are kept at baseline. Only a
+   *reward* term moves; every *safety* term (threat weights, death-zone buffers,
+   wall push) stays at baseline and ``_safe_heading`` still runs as the hard
+   1-frame floor, so no pop can step us into an enemy's next-turn kill disk.
+
+3. **Cooldown-window virus-pop gate** (``_virus_pop_safe_window``). v8's
+   ``_virus_pop_safe`` tests a one-tick horizon: is an eater within its
+   next-turn eat reach at the instant of the pop. But popping scatters us into
+   ~16 tiny pieces that stay merge-locked (and universally edible) for
+   ``SPLIT_COOLDOWN_FRAMES = 18`` ticks. So in the endgame a pop is only taken
+   when no enemy big enough to eat a piece can reach the scatter at ANY point in
+   the ``t_us + 18`` window — and we assume the enemy plays optimally (it may
+   split toward the scatter when a half still out-masses a piece). If a pop
+   fails that stricter test we simply DON'T pop and let the HUNT field pull us
+   onto smaller blobs instead. Pre-endgame virus behaviour is byte-for-byte v8,
+   so v10 is a strict superset of v8 that only diverges while it is winning.
+
+Hand-authored (NOT generated by tools/package_heuristic.py) so it diverges from
+bot/heuristic.py on purpose; the verbatim-splice test does not apply to it.
+Imports only the kit (helper, lib) and the Python stdlib — no `bot` package, no
+numpy, no learned weights — matching the kit example-bot surface.
+"""
+
+from __future__ import annotations
+
+import gc
+import json
+import math
+import sys
+import types
+from dataclasses import dataclass, replace
+from typing import Tuple
+
+from helper.interface import Connection
+from lib.config.arena import ARENA_SIZE, MAX_BLOB_COUNT, VIRUS_SIZE
+from lib.config.player import (
+    BASE_PLAYER_SPEED,
+    EAT_SIZE_RATIO,
+    MIN_PLAYER_SPEED,
+    PLAYER_SPEED_RADIUS_FACTOR,
+    SPLIT_COOLDOWN_FRAMES,
+    SPLIT_EJECT_DRAG,
+    SPLIT_EJECT_SPEED,
+    SPLIT_MIN_MASS,
+)
+from lib.interface.events.moves.move_player import MovePlayer
+from lib.interface.queries.query_move import QueryMovePlayer
+from lib.models.penguin_model import DirectionModel
+
+# Engine-exact constants (derived exactly as bot/spec.py does), exposed under a
+# `spec` namespace. v7 added the movement-speed constants (for the death zone's
+# next-turn reach), MAX_BLOB_COUNT and VIRUS_MASS_GAIN (for the pop's scatter
+# piece-mass estimate); v8 reuses all of them for the virus-shield geometry;
+# v10 adds SPLIT_COOLDOWN_FRAMES for the endgame pop's merge-lockout window.
+spec = types.SimpleNamespace(
+    ARENA_SIZE=ARENA_SIZE,
+    BASE_PLAYER_SPEED=BASE_PLAYER_SPEED,
+    EAT_SIZE_RATIO=EAT_SIZE_RATIO,
+    MAX_BLOB_COUNT=MAX_BLOB_COUNT,
+    MIN_PLAYER_SPEED=MIN_PLAYER_SPEED,
+    PLAYER_SPEED_RADIUS_FACTOR=PLAYER_SPEED_RADIUS_FACTOR,
+    SPLIT_COOLDOWN_FRAMES=SPLIT_COOLDOWN_FRAMES,
+    SPLIT_MIN_MASS=SPLIT_MIN_MASS,
+    SPLIT_REACH=SPLIT_EJECT_SPEED / (1.0 - SPLIT_EJECT_DRAG),
+    VIRUS_MASS_GAIN=VIRUS_SIZE * VIRUS_SIZE,
+    VIRUS_POP_MASS_THRESHOLD=VIRUS_SIZE * VIRUS_SIZE * EAT_SIZE_RATIO,
+)
+
+
+def _speed(radius: float) -> float:
+    """Engine-exact per-turn movement distance of a blob of this radius
+    (``StateMutator._movement_speed``): ``max(0.25, 1.1 / (1 + 0.08 r))``.
+    Monotonically decreasing — smaller blobs move faster, so anything that can
+    eat us (bigger) is always slower than us in open field."""
+    return max(spec.MIN_PLAYER_SPEED,
+               spec.BASE_PLAYER_SPEED / (1.0 + radius * spec.PLAYER_SPEED_RADIUS_FACTOR))
+
+
+def _shrapnel_mass(eater_mass: float) -> float:
+    """Mass of each piece a blob of ``eater_mass`` scatters into when it pops a
+    virus (conservative: the engine splits it into as many pieces as the blob
+    cap allows — up to ``MAX_BLOB_COUNT`` from a single-blob player)."""
+    return (eater_mass + spec.VIRUS_MASS_GAIN) / spec.MAX_BLOB_COUNT
+
+
+@dataclass(frozen=True)
+class HeuristicParams:
+    """Tunable weights and ranges. Defaults are hand-set from the replay
+    mining (aggressive prey-seeking, moderate wall use, sparing splits) and
+    are the knobs to sweep against the meta-clone field."""
+
+    w_food: float = 1.0
+    w_prey: float = 6.0
+    w_threat: float = 45.0
+    w_virus: float = 30.0
+    w_wall: float = 10.0
+    food_falloff: float = 1.0        # exponent on distance for food pull
+    prey_falloff: float = 1.0
+    threat_falloff: float = 2.0      # nearer threats dominate hard
+    virus_range: float = 4.5         # ignore viruses beyond this
+    virus_eat_max_mass: float = 12.0  # when safe, eat viruses up to this mass for
+                                      # the +VIRUS_MASS_GAIN pop; above it a big
+                                      # blob avoids (the pop is not worth scattering)
+    wall_margin: float = 6.0         # repel within this of a wall
+    threat_min_gap: float = 0.5      # floor on edge-distance (avoid blow-up)
+    split_blob_cap: int = 3          # never split when already this fragmented
+    split_safety_buffer: float = 3.0  # extra clearance a child needs from any eater
+    severe_threat_weight: float = 1.0     # can eat our largest blob
+    minor_threat_weight: float = 0.4      # can only eat a smaller blob
+    # --- threat gate (used by the wall push) ----------------------------------
+    eater_range_pad: float = 8.0       # an enemy that can eat us counts as "in
+                                       # range" within its strike edge + this
+    safe_wall_scale: float = 0.15      # anti-corner push multiplier when NO eater
+                                       # is in range (1.0 = never relax). Corners
+                                       # only bite under a predator, so with none
+                                       # near we all but drop the push (which else
+                                       # cancels prey-pull and dithers at the wall)
+    # --- two-phase controller (early game) ---
+    momentum: float = 0.1            # carry this fraction of last tick's heading
+                                     # into this one (a low-pass filter that damps
+                                     # the residual jitter at field equilibria)
+    feed_until_round: int = 50      # below this round: deterministic FEED mode
+    feed_flee_margin: float = 4.0    # FEED flees an eater within its reach + this
+    virus_seek_until_round: int = 400  # before this round, the first time we are
+                                       # big enough to eat a virus, detour to pop
+                                       # one (+VIRUS_MASS_GAIN) then hand off to HUNT
+    # --- v7: death-zone safety layer ---
+    death_zone_buffer: float = 0.6   # clearance beyond an eater's exact next-turn
+                                     # reach (radius + speed) that our next
+                                     # position must keep from its centre
+    escape_headings: int = 24        # candidate directions the safety filter
+                                     # scans when the field heading is unsafe
+    # --- v7: reachability virus-pop gate ---
+    virus_pop_spread: float = 2.5    # radius the ~16 scattered pieces occupy
+                                     # around the pop site
+    virus_pop_buffer: float = 2.0    # extra clearance the pop site needs beyond
+                                     # an enemy's next-turn eat reach
+    # --- v8: gravity-well FEED ---
+    feed_food_falloff: float = 2.0   # exponent on distance for the FEED-mode
+                                     # density pull (sum of unit vectors / d^k);
+                                     # 2.0 = the classic gravity well
+    # --- v8: virus-as-shield ---
+    virus_shield_range: float = 12.0   # only shield behind a virus within this
+    virus_shield_standoff: float = 0.4  # sit this far past the virus centre, on
+                                        # the far side from the eater (hugging:
+                                        # an immune blob may cover the centre)
+    virus_shield_margin: float = 1.0   # we must be able to reach the shield spot
+                                       # this much closer than the eater (we are
+                                       # also strictly faster, so this is slack)
+    virus_shield_hug: float = 1.5      # in the death zone: a poppable eater is
+                                       # "blocked" when our next position is
+                                       # within this of a virus that sits between
+                                       # us and it
+    virus_hazard_margin: float = 0.25  # extra clearance our own poppable blob
+                                       # keeps from an unsafe virus centre (the
+                                       # engine's post-move nudges are small)
+    # --- v10: rank-aware endgame hunt mode ---
+    endgame_mass_floor: float = 50.0   # endgame gate fires when total mass is at
+                                       # least this AND the round floor is reached
+    endgame_round_floor: int = 1000    # ...(mass+round branch)
+    endgame_leader_min_mass: float = 10.0  # ...OR when we are rank-1 leader AND at
+                                           # least this big. Rank-1 alone is not
+                                           # enough: a mass-3 "leader" pressing hard
+                                           # loses its lead — protect it instead.
+    # NOTE: prey terms are intentionally LEFT AT BASELINE in the endgame. A
+    # 20-game A/B sweep (seeds 0-9, 1400 rounds, vs v8) showed that raising the
+    # endgame prey pull is a net LOSS at every level tried — w_prey 12/falloff
+    # 0.6 → 0.64x v8 mass, w_prey 8/falloff 1.0 → 0.89x, w_prey 8/falloff 0.85 →
+    # 0.92x. In this engine "1st place" usually means mass ~3 (least-small, not
+    # dominant) and blob-chasing is high-variance: the leader over-commits and
+    # gets punished more than it gains. The virus half, by contrast, is a
+    # low-variance +2.25 under the strict cooldown-window gate — virus-only
+    # endgame scored 1.23x v8 mass and a better mean rank. So the endgame "hunt"
+    # is virus-hunting only; the field's baseline prey-pull is already well
+    # tuned. (Kept as knobs at baseline values for easy future sweeps.)
+    endgame_w_prey: float = 6.0        # = base w_prey (no prey aggression change)
+    endgame_prey_falloff: float = 1.0  # = base prey_falloff
+    endgame_virus_eat_max_mass: float = 40.0  # a leader keeps eating viruses for
+                                              # mass past the mid-game cap (base
+                                              # 12) — but only when the stricter
+                                              # cooldown-window pop gate clears.
+                                              # THIS is the winning endgame lever.
+    # --- v11 A: rank-aware DEFENSIVE threat (fires when BEHIND) ---
+    defensive_rank_frac: float = 0.5     # we count as "behind" when our rank
+                                         # position is in the worse half of the
+                                         # field (pos >= frac * n_players).
+    defensive_w_threat_mult: float = 1.5  # scale the repulsive threat term by this
+                                          # while behind — play more cautiously and
+                                          # stop feeding the leaders. A SAFETY
+                                          # weight (never lowers caution); disjoint
+                                          # by rank from the leading-only endgame.
+    # --- v11 B: split-to-virus travel (the replay mechanic) ---
+    split_virus_shatter_mode: str = "gate"  # SHIPPED DEFAULT (chosen by A/B).
+                                           # "gate": rely on the 18-tick safety
+                                           # window alone — take the travel-split
+                                           # whenever the scatter survives to
+                                           # re-merge (parent stays whole). Beat
+                                           # "low" 1.99x mass / better rank over 20
+                                           # games, and v10 1.63x. "low": also
+                                           # require post-consume pieces <=
+                                           # split_virus_max_pieces — under
+                                           # split_blob_cap=3 this ~never fires, so
+                                           # it degrades to v10 (kept selectable).
+    split_virus_max_pieces: int = 4      # in "low" mode: only split-to-virus if the
+                                         # eating child would shatter into at most
+                                         # this many pieces (team 53's clean grabs
+                                         # are pieces=1; splitting first keeps the
+                                         # shatter tiny).
+
+    # --- v12: credit enemy split-reach in the veto while tiny ---
+    dz_split_frac: float = 0.5   # fraction of the 8.9u split reach added
+                                 # to a split-capable eater's disk at spawn
+    dz_split_ref: float = 6.0    # ...ramping to 0 by this mass
+
+
+def _endgame_active(query, params: HeuristicParams) -> bool:
+    """True when we are winning and should switch to the endgame hunt posture.
+
+    Winning = we are the current rank-1 leader (``rankings[0]`` is our player
+    id — rankings is players sorted by total mass desc, sent every tick), OR we
+    hold at least ``endgame_mass_floor`` total mass and the round has reached
+    ``endgame_round_floor``. Not a latch: recomputed each tick, so a lost lead
+    reverts us to the safe baseline posture immediately."""
+    you = query.you
+    total_mass = sum(b.radius * b.radius for b in you.blobs)
+    # Leader branch: being rank-1 in this engine only means "least-small" — most
+    # of the game the leader sits at mass ~2-6. Pressing max aggression there
+    # loses the safe lead (the opposite of "protect the lead"), so we require the
+    # leader to also clear ``endgame_leader_min_mass`` before switching posture.
+    rankings = getattr(query, "rankings", None) or ()
+    if (rankings and rankings[0] == you.player_id
+            and total_mass >= params.endgame_leader_min_mass):
+        return True
+    # Mass+round branch: dominant late-game even if not currently rank-1.
+    return (total_mass >= params.endgame_mass_floor
+            and query.round >= params.endgame_round_floor)
+
+
+def _endgame_params(base: HeuristicParams) -> HeuristicParams:
+    """The winning-posture profile: a stronger, longer-range prey pull and a
+    higher virus-eat cap. Only *reward* terms move — every safety term (threat
+    weights, death-zone buffers, wall push) is inherited unchanged, so the
+    death-zone veto still bounds the aggression."""
+    return replace(base,
+                   w_prey=base.endgame_w_prey,
+                   prey_falloff=base.endgame_prey_falloff,
+                   virus_eat_max_mass=base.endgame_virus_eat_max_mass)
+
+
+def _rank_posture(query, params: HeuristicParams) -> float:
+    """v11 A: threat-weight multiplier from our current rank standing.
+
+    ``rankings`` is all player ids sorted by total mass desc, sent every tick.
+    When our position sits in the worse half of the field (``pos >=
+    defensive_rank_frac * n``) we are "behind" and scale the repulsive threat
+    term up by ``defensive_w_threat_mult`` — play more cautiously and stop
+    feeding the leaders. Returns 1.0 (no change) when leading/mid or when the
+    ranking is unavailable. Raises a *safety* weight only; disjoint by rank from
+    the leading-only endgame press, so the two never act at once."""
+    you = query.you
+    rankings = getattr(query, "rankings", None) or ()
+    if not rankings or you.player_id not in rankings:
+        return 1.0
+    pos = rankings.index(you.player_id)  # 0 = leader
+    if pos >= params.defensive_rank_frac * len(rankings):
+        return params.defensive_w_threat_mult
+    return 1.0
+
+
+def _eater_in_range(query, params: HeuristicParams = HeuristicParams()) -> bool:
+    """True if a visible enemy that can eat one of our blobs is within striking
+    range — its body, plus split reach if a half still eats our biggest blob,
+    plus ``eater_range_pad``. Gates the anti-corner wall push (on only when
+    true)."""
+    blobs = query.you.blobs
+    if not blobs:
+        return False
+    my_min_mass = min(b.radius * b.radius for b in blobs)
+    my_max_mass = max(b.radius * b.radius for b in blobs)
+    ratio = spec.EAT_SIZE_RATIO
+    cx, cy = query.you.pos
+    for b in query.visible_blobs:
+        bm = b.radius * b.radius
+        if bm < ratio * my_min_mass:
+            continue  # cannot eat any blob of ours
+        reach = b.radius
+        if bm >= spec.SPLIT_MIN_MASS and (bm * 0.5) >= ratio * my_max_mass:
+            reach = b.radius + spec.SPLIT_REACH
+        d = math.hypot(b.pos[0] - cx, b.pos[1] - cy)
+        if d - reach <= params.eater_range_pad:
+            return True
+    return False
+
+
+def heuristic_action(query, params: HeuristicParams = HeuristicParams(),
+                     endgame: bool = False) -> Tuple[float, float, bool]:
+    """Return ``(dx, dy, split)`` — a heading vector (magnitude irrelevant, the
+    engine normalizes) and whether to split this turn.
+
+    ``endgame`` selects the stricter cooldown-window virus-pop gate for the
+    virus attract/repel term; when it is set, a virus is only attractive if
+    ``_virus_pop_safe_window`` clears it, so an unsafe pop simply leaves the
+    field to pull us onto smaller prey instead of the virus."""
+    you = query.you
+    blobs = you.blobs
+    if not blobs:  # never queried while dead, but stay defensive
+        return 0.0, 0.0, False
+
+    cx, cy = you.pos
+    radii = [b.radius for b in blobs]
+    my_max_r = max(radii)
+    my_max_mass = my_max_r * my_max_r
+    my_min_mass = min(r * r for r in radii)
+    poppable = my_max_mass > spec.VIRUS_POP_MASS_THRESHOLD
+    ratio = spec.EAT_SIZE_RATIO
+    eater_near = _eater_in_range(query, params)  # shared by the virus + wall gates
+    # v11 A: when behind, scale the repulsive threat term up (more caution, stop
+    # feeding leaders). 1.0 when leading/mid — disjoint from the endgame press.
+    threat_mult = _rank_posture(query, params)
+
+    fx = fy = 0.0
+
+    # --- food: grow toward the nearest pellets --------------------------------
+    for f in query.visible_food:
+        dx = f.pos[0] - cx
+        dy = f.pos[1] - cy
+        d = math.hypot(dx, dy)
+        if d < 1e-9:
+            continue
+        w = params.w_food / (d ** params.food_falloff)
+        fx += dx / d * w
+        fy += dy / d * w
+
+    # --- enemies: prey pulls, threats push ------------------------------------
+    for b in query.visible_blobs:
+        dx = b.pos[0] - cx
+        dy = b.pos[1] - cy
+        d = math.hypot(dx, dy)
+        if d < 1e-9:
+            d = 1e-9
+        bm = b.radius * b.radius
+
+        if my_max_mass >= ratio * bm:
+            # prey: bigger, closer prey pulls harder
+            w = params.w_prey * bm / (d ** params.prey_falloff)
+            fx += dx / d * w
+            fy += dy / d * w
+        elif bm >= ratio * my_min_mass:
+            # threat: its danger radius includes split reach if a half still
+            # eats our biggest blob
+            reach = b.radius
+            if bm >= spec.SPLIT_MIN_MASS and (bm * 0.5) >= ratio * my_max_mass:
+                reach = b.radius + spec.SPLIT_REACH
+            gap = max(d - reach, params.threat_min_gap)
+            sev = (params.severe_threat_weight
+                   if bm >= ratio * my_max_mass
+                   else params.minor_threat_weight)
+            w = params.w_threat * threat_mult * sev / (gap ** params.threat_falloff)
+            fx -= dx / d * w
+            fy -= dy / d * w
+
+    # --- viruses: eat for the mass when safe, else avoid ----------------------
+    #
+    # Only relevant when poppable (mass > 2.7) — below that a virus is inert to
+    # us. A pop is +VIRUS_MASS_GAIN mass but scatters us to the blob cap, so it is
+    # only worth it while (a) no eater is in range to punish the scatter and (b)
+    # we are still small enough for the fixed +2.25 to be a real relative gain
+    # (``virus_eat_max_mass``). Then we *attract* to the virus and eat it;
+    # otherwise we repel. The weight ramps smoothly to zero at ``virus_range`` so
+    # there is no hard cliff for the field to bang-bang across (the old jitter).
+    #
+    # v10: in the endgame the "safe to pop" test is the stricter cooldown-window
+    # gate applied per-virus (an unsafe virus stays repulsive, so the field pulls
+    # us onto smaller prey instead), and the mass cap is the raised endgame cap.
+    if poppable:
+        for v in query.visible_viruses:
+            dx = v.pos[0] - cx
+            dy = v.pos[1] - cy
+            d = math.hypot(dx, dy)
+            if d < 1e-9 or d > params.virus_range:
+                continue
+            if endgame:
+                eat_virus = (my_max_mass <= params.virus_eat_max_mass
+                             and _virus_pop_safe_window(
+                                 query, v.pos, params,
+                                 spec.SPLIT_COOLDOWN_FRAMES))
+            else:
+                eat_virus = (not eater_near
+                             and my_max_mass <= params.virus_eat_max_mass)
+            sign = 1.0 if eat_virus else -1.0
+            w = params.w_virus / (d * d) * (1.0 - d / params.virus_range)
+            fx += sign * dx / d * w
+            fy += sign * dy / d * w
+
+    # --- walls: push inward near the edges (anti-corner) ----------------------
+    #
+    # The anti-corner push exists for one reason: a corner is a death trap when a
+    # predator commits, because we lose our escape arc. But it keys off *our*
+    # position, not the danger, so it fires the same whether we are being driven
+    # into a corner (keep it) or driving prey into one (it then just fights our
+    # own prey-pull and the two cancel at the margin, dithering us in a local
+    # minimum). And a corner is only dangerous *because of a predator* — which the
+    # threat term already handles. So we gate the push on the danger itself: full
+    # strength only when an enemy that can eat us is in range, all but off
+    # (``safe_wall_scale``) otherwise, which lets prey-pull win into a corner.
+    arena = spec.ARENA_SIZE
+    m = params.wall_margin
+    wall_scale = 1.0 if eater_near else params.safe_wall_scale
+    ww = params.w_wall * wall_scale
+    if cx < m:
+        fx += ww * (m - cx) / m
+    if arena - cx < m:
+        fx -= ww * (m - (arena - cx)) / m
+    if cy < m:
+        fy += ww * (m - cy) / m
+    if arena - cy < m:
+        fy -= ww * (m - (arena - cy)) / m
+
+    # --- split-to-kill: only when a half-mass child still lands the eat and
+    #     nothing can punish the split ----------------------------------------
+    split = _should_split(query, cx, cy, my_max_r, my_max_mass, len(blobs),
+                          ratio, params)
+    if split is not None:
+        # bias the heading toward the chosen prey and split
+        bx, by = split
+        dx, dy = bx - cx, by - cy
+        d = math.hypot(dx, dy) or 1e-9
+        fx += dx / d * params.w_prey * my_max_mass  # dominate: commit to the kill
+        fy += dy / d * params.w_prey * my_max_mass
+        return fx, fy, True
+
+    # --- v11 B: split-to-virus travel — launch a child onto a reachable virus
+    #     to grab its mass while the parent stays whole. Lower priority than the
+    #     kill-split (eating a blob beats eating a virus); same 18-tick optimal-
+    #     play safety window + predator-disk gate as the endgame pop. ----------
+    vsplit = _should_split_to_virus(query, cx, cy, my_max_r, my_max_mass,
+                                    len(blobs), ratio, params)
+    if vsplit is not None:
+        bx, by = vsplit
+        dx, dy = bx - cx, by - cy
+        d = math.hypot(dx, dy) or 1e-9
+        fx += dx / d * params.w_virus * 4.0  # commit the launch toward the virus
+        fy += dy / d * params.w_virus * 4.0
+        return fx, fy, True
+
+    if fx * fx + fy * fy < 1e-12:
+        # nothing in view pulling us — drift to arena center to find food
+        dx = arena / 2.0 - cx
+        dy = arena / 2.0 - cy
+        if dx * dx + dy * dy < 1e-6:
+            return 0.0, 0.0, False
+        return dx, dy, False
+    return fx, fy, False
+
+
+def _should_split(query, cx, cy, my_max_r, my_max_mass, n_blobs, ratio,
+                  params: HeuristicParams):
+    """Nearest safe split-kill prey position, or ``None``.
+
+    Requires: our biggest blob can spawn two useful children (mass ≥
+    ``2*SPLIT_MIN_MASS``), we are not already over-fragmented, the prey is
+    inside split reach but not already covered, a half-mass child still
+    out-masses it by the ratio, and no enemy could eat a child that lands
+    near us."""
+    if my_max_mass < 2.0 * spec.SPLIT_MIN_MASS or n_blobs > params.split_blob_cap:
+        return None
+    child_mass = my_max_mass * 0.5
+
+    best = None
+    best_d2 = math.inf
+    for b in query.visible_blobs:
+        bm = b.radius * b.radius
+        dx = b.pos[0] - cx
+        dy = b.pos[1] - cy
+        d = math.hypot(dx, dy)
+        if not (my_max_r < d <= my_max_r + spec.SPLIT_REACH):
+            continue
+        if child_mass < ratio * bm:
+            continue
+        d2 = dx * dx + dy * dy
+        if d2 < best_d2:
+            best_d2 = d2
+            best = (b.pos[0], b.pos[1])
+
+    if best is None:
+        return None
+
+    # safety: after splitting, a child (mass child_mass) must not sit inside
+    # any bigger enemy's strike range
+    for eb in query.visible_blobs:
+        ebm = eb.radius * eb.radius
+        if ebm < ratio * child_mass:
+            continue
+        d = math.hypot(eb.pos[0] - cx, eb.pos[1] - cy)
+        if d <= eb.radius + spec.SPLIT_REACH + params.split_safety_buffer:
+            return None
+    return best
+
+
+def _should_split_to_virus(query, cx, cy, my_max_r, my_max_mass, n_blobs,
+                           ratio, params: HeuristicParams):
+    """v11 B: nearest virus we can safely reach by splitting a child onto it, or
+    ``None``. The mechanic from the supplied replays (team 53): a split hurls a
+    child ~8.9 units so a small piece grabs the virus mass while the big parent
+    stays whole, and the pieces re-merge after the 18-tick lockout.
+
+    Gates (all must hold), mirroring ``_should_split`` for the geometry and
+    reusing ``_virus_pop_safe_window`` for the lockout safety:
+
+    * **Worthwhile**: our biggest blob can spawn two viable halves (mass ≥
+      ``2*SPLIT_MIN_MASS``) and the half-mass child can still *consume* the virus
+      (``child_mass > virus_mass * EAT_SIZE_RATIO`` — the engine's
+      ``_can_consume_virus`` rule).
+    * **Not over-fragmented**: ``n_blobs <= split_blob_cap``.
+    * **Reachable by the launch**: virus in the split-reach band
+      ``my_max_r < d <= my_max_r + SPLIT_REACH`` — the eject burst lands a child
+      on it, but it is not already coverable by ordinary movement.
+    * **Shatter (mode "low")**: the consuming child would shatter into at most
+      ``split_virus_max_pieces`` pieces. The engine shatters the eater into
+      ``max(1, MAX_BLOB_COUNT - n_after + 1)`` pieces, where ``n_after`` counts
+      the child we are about to spawn — the more blobs already out, the smaller
+      the shatter (team 53's clean pieces=1 grabs). Mode "gate" skips this and
+      relies on the safety window alone.
+    * **Safe for the lockout**: ``_virus_pop_safe_window`` clears the full
+      ``SPLIT_COOLDOWN_FRAMES``-tick window under optimal enemy play (same gate
+      as the endgame pop). Failing → leave the virus to the whole-blob path.
+    * **Child not in a predator's disk**: no enemy big enough to eat a
+      ``child_mass`` piece within ``radius + SPLIT_REACH + split_safety_buffer``
+      of us (identical to ``_should_split``'s final loop)."""
+    if my_max_mass < 2.0 * spec.SPLIT_MIN_MASS or n_blobs > params.split_blob_cap:
+        return None
+    child_mass = my_max_mass * 0.5
+
+    # shatter estimate for "low" mode: n_after includes the child we spawn.
+    if params.split_virus_shatter_mode == "low":
+        n_after = n_blobs + 1
+        pieces = max(1, spec.MAX_BLOB_COUNT - n_after + 1)
+        if pieces > params.split_virus_max_pieces:
+            return None
+
+    best = None
+    best_d2 = math.inf
+    for v in query.visible_viruses:
+        vm = v.radius * v.radius
+        # the half-mass child must out-mass the virus by the eat ratio to
+        # consume it rather than pop-and-scatter uselessly
+        if child_mass <= vm * ratio:
+            continue
+        dx = v.pos[0] - cx
+        dy = v.pos[1] - cy
+        d = math.hypot(dx, dy)
+        if not (my_max_r < d <= my_max_r + spec.SPLIT_REACH):
+            continue
+        # the 18-tick optimal-play lockout gate (same as the endgame pop)
+        if not _virus_pop_safe_window(query, v.pos, params,
+                                      spec.SPLIT_COOLDOWN_FRAMES):
+            continue
+        d2 = dx * dx + dy * dy
+        if d2 < best_d2:
+            best_d2 = d2
+            best = (v.pos[0], v.pos[1])
+
+    if best is None:
+        return None
+
+    # safety: after splitting, a child (mass child_mass) must not sit inside any
+    # bigger enemy's strike range (identical to _should_split)
+    for eb in query.visible_blobs:
+        ebm = eb.radius * eb.radius
+        if ebm < ratio * child_mass:
+            continue
+        d = math.hypot(eb.pos[0] - cx, eb.pos[1] - cy)
+        if d <= eb.radius + spec.SPLIT_REACH + params.split_safety_buffer:
+            return None
+    return best
+
+
+# --- v7/v8: death-zone safety layer -------------------------------------------
+
+def _safe_heading(query, dx: float, dy: float,
+                  params: HeuristicParams) -> Tuple[float, float]:
+    """Veto any heading whose resulting position would place a blob of ours in
+    an enemy's next-turn kill disk — or pop one of our own poppable blobs on a
+    virus whose scatter is unsafe; return the safe heading closest to the
+    desired ``(dx, dy)``, or the least-bad heading when boxed in.
+
+    Kill disk: eating requires our blob *centre* within the enemy's radius
+    *after both move*. The enemy can move up to ``_speed(enemy_radius)`` toward
+    wherever we end up, so a centre kept beyond ``enemy_radius + enemy_speed``
+    of the enemy's *current* position cannot be eaten next turn no matter how
+    the enemy moves. That radius (+ a buffer) is the disk. Split reach is
+    intentionally excluded — a ~8.9-unit no-go disk around every big enemy
+    would paralyse the bot; the field's smooth threat term handles split
+    standoff, and this layer stops only the certain movement kill.
+
+    v8 adds two virus-aware rules, both grounded in engine order (viruses
+    resolve BEFORE player eating in ``commit_round``):
+
+    * **Shield exemption**: a poppable eater is skipped for a candidate
+      position that hugs (within ``virus_shield_hug`` of) a virus sitting
+      between us and it (``dist(eater, virus) <= dist(eater, next_pos)``) — it
+      cannot take our centre from that side without covering the virus centre
+      and shattering first. Not granted when its post-pop shrapnel could still
+      eat the blob in question. This is what lets the layer HOLD a shield
+      position (and orbit to keep the virus interposed) instead of fleeing off
+      the one spot the predator cannot touch.
+    * **Self-pop hazard**: any candidate that lands one of our own
+      mass-above-threshold blobs on a virus centre whose pop
+      ``_virus_pop_safe`` rejects is vetoed like a kill — the accidental
+      mid-crossing shatter is a death sentence with enemies around. Viruses
+      whose pop IS safe are exempt, so the deliberate detour/HUNT pop still
+      walks in.
+
+    Why a filter and not a force: a summed field cannot guarantee avoidance
+    (forces cancel), and near a wall the escape vector points into the boundary
+    the engine clamps us against — the field says "flee" while we do not move.
+    Replaying the clamp on each trial position and hard-rejecting kill-disk
+    landings makes the guarantee a property of the move actually sent."""
+    blobs = query.you.blobs
+    if not blobs:
+        return dx, dy
+    ratio = spec.EAT_SIZE_RATIO
+    arena = spec.ARENA_SIZE
+    pop_thr = spec.VIRUS_POP_MASS_THRESHOLD
+
+    # our blobs: (x, y, radius, mass, per-turn speed)
+    my = [(b.pos[0], b.pos[1], b.radius, b.radius * b.radius, _speed(b.radius))
+          for b in blobs]
+    min_my_mass = min(t[3] for t in my)
+
+    # enemies that can eat *some* blob of ours, with kill-disk radius
+    # v12: while tiny, credit an enemy that could SPLIT-kill one of our
+    # blobs part of its 8.9-unit split reach in the no-go disk (normally
+    # excluded to avoid paralysis). Small blobs die mostly to split-lunges;
+    # the credit ramps to 0 by dz_split_ref mass so a grown bot is free.
+    split_small = params.dz_split_frac * max(
+        0.0, 1.0 - min_my_mass / params.dz_split_ref)
+    eaters = []
+    for b in query.visible_blobs:
+        ebm = b.radius * b.radius
+        if ebm < ratio * min_my_mass:
+            continue  # cannot eat even our smallest blob — not a death threat
+        disk = b.radius + _speed(b.radius) + params.death_zone_buffer
+        if (split_small > 0.0 and ebm >= spec.SPLIT_MIN_MASS
+                and (ebm * 0.5) >= ratio * min_my_mass):
+            disk += split_small * spec.SPLIT_REACH
+        eaters.append((b.pos[0], b.pos[1], ebm, disk))
+
+    # viruses: shield geometry needs every visible one; the self-pop hazard
+    # needs the ones whose pop is currently unsafe (computed once, not per
+    # candidate heading — _virus_pop_safe walks all enemies)
+    shield_viruses = [(v.pos[0], v.pos[1]) for v in query.visible_viruses]
+    hazard_viruses = []
+    if any(t[3] > pop_thr for t in my):
+        hazard_viruses = [vp for vp in shield_viruses
+                          if not _virus_pop_safe(query, vp, params)]
+
+    if not eaters and not hazard_viruses:
+        return dx, dy  # no way to die by moving — the field heading stands
+
+    def clearance(ux: float, uy: float) -> float:
+        """Min over (our blob, hazard) of gap. >0 == safe next turn."""
+        worst = math.inf
+        for (bx, by, br, bmass, bspd) in my:
+            nx = min(max(br, bx + ux * bspd), arena - br)  # engine's arena clamp
+            ny = min(max(br, by + uy * bspd), arena - br)
+            for (ex, ey, ebm, disk) in eaters:
+                if ebm < ratio * bmass:
+                    continue  # this eater can't eat this particular blob
+                if ebm > pop_thr and shield_viruses \
+                        and _shrapnel_mass(ebm) < ratio * bmass:
+                    # shield: skip this eater if a virus between us blocks it
+                    d_en = math.hypot(ex - nx, ey - ny)
+                    if any(math.hypot(vx - nx, vy - ny) <= params.virus_shield_hug
+                           and math.hypot(vx - ex, vy - ey) <= d_en
+                           for (vx, vy) in shield_viruses):
+                        continue
+                gap = math.hypot(nx - ex, ny - ey) - disk
+                if gap < worst:
+                    worst = gap
+            if bmass > pop_thr:
+                for (vx, vy) in hazard_viruses:
+                    gap = (math.hypot(nx - vx, ny - vy)
+                           - br - params.virus_hazard_margin)
+                    if gap < worst:
+                        worst = gap
+        return worst
+
+    # desired heading first: if already safe, return it untouched (preserves the
+    # field behaviour on every tick where we are not being driven into a kill)
+    dmag = math.hypot(dx, dy)
+    if dmag > 1e-9:
+        ux0, uy0 = dx / dmag, dy / dmag
+        if clearance(ux0, uy0) > 0.0:
+            return dx, dy
+    else:
+        ux0, uy0 = 0.0, 0.0
+
+    # scan a fan of candidate headings: keep the safe one most aligned with the
+    # desired heading; if none is safe (fully boxed), take the least-bad one
+    n = max(1, params.escape_headings)
+    best_safe = None
+    best_align = -math.inf
+    best_fallback = (ux0, uy0) if (ux0 or uy0) else (1.0, 0.0)
+    best_clear = -math.inf
+    for i in range(n):
+        ang = 2.0 * math.pi * i / n
+        ux, uy = math.cos(ang), math.sin(ang)
+        c = clearance(ux, uy)
+        if c > 0.0:
+            align = ux * ux0 + uy * uy0
+            if align > best_align:
+                best_align = align
+                best_safe = (ux, uy)
+        if c > best_clear:
+            best_clear = c
+            best_fallback = (ux, uy)
+    return best_safe if best_safe is not None else best_fallback
+
+
+# --- early-game FEED mode -----------------------------------------------------
+
+def _flee_vector(query, cx, cy, my_min_mass, params: HeuristicParams):
+    """Summed repulsion from every visible enemy that can eat us and is within
+    striking range (its body, +split reach if a half still eats us), or ``None``
+    when none is close. Shared by FEED and the virus detour so both survive while
+    small — a beeline is never worth diving into an eater."""
+    ratio = spec.EAT_SIZE_RATIO
+    fx = fy = 0.0
+    fleeing = False
+    for b in query.visible_blobs:
+        bm = b.radius * b.radius
+        if bm < ratio * my_min_mass:
+            continue  # cannot eat us — ignore while small
+        dx = cx - b.pos[0]
+        dy = cy - b.pos[1]
+        d = math.hypot(dx, dy) or 1e-9
+        reach = b.radius
+        if bm >= spec.SPLIT_MIN_MASS and (bm * 0.5) >= ratio * my_min_mass:
+            reach = b.radius + spec.SPLIT_REACH
+        if d <= reach + params.feed_flee_margin:
+            fleeing = True
+            w = 1.0 / (d * d)  # nearer eaters dominate
+            fx += dx / d * w
+            fy += dy / d * w
+    return (fx, fy) if fleeing else None
+
+
+def _virus_shield_heading(query, cx, cy, my_min_mass, my_max_mass,
+                          params: HeuristicParams):
+    """Heading to a virus-shield spot while fleeing, or ``None``.
+
+    The engine-legal virus weapon (there is no mass-eject in this engine): a
+    blob at or below VIRUS_POP_MASS_THRESHOLD is *immune* to viruses, while a
+    poppable predator that covers the virus centre shatters into ~16 pieces —
+    and ``_resolve_viruses`` runs BEFORE eating in ``commit_round``, so on a
+    simultaneous lunge it pops before it can swallow us. Standing just behind a
+    virus (far side from the eater) therefore turns it into cover the predator
+    must either detour around (we are faster and re-interpose) or die on.
+
+    Conditions: we are fully immune (every blob ≤ threshold — else we would
+    pop the shield ourselves at hug distance); the dominant (nearest) eater is
+    poppable AND its post-pop shrapnel could not still eat us (no cover against
+    a true monster); the virus is within ``virus_shield_range``; and we can
+    reach the spot with ``virus_shield_margin`` to spare over the eater (slack
+    on top of being strictly faster). Target = virus centre pushed
+    ``virus_shield_standoff`` along the eater→virus line."""
+    if my_max_mass > spec.VIRUS_POP_MASS_THRESHOLD:
+        return None  # not immune — hugging the virus would shatter US
+    ratio = spec.EAT_SIZE_RATIO
+
+    # dominant threat: the nearest enemy that can eat us
+    ex = ey = 0.0
+    ebm = 0.0
+    best_d = math.inf
+    for b in query.visible_blobs:
+        bm = b.radius * b.radius
+        if bm < ratio * my_min_mass:
+            continue
+        d = math.hypot(b.pos[0] - cx, b.pos[1] - cy)
+        if d < best_d:
+            best_d = d
+            ex, ey, ebm = b.pos[0], b.pos[1], bm
+    if best_d is math.inf:
+        return None
+    if ebm <= spec.VIRUS_POP_MASS_THRESHOLD:
+        return None  # too small to pop — the virus is no weapon against it
+    if _shrapnel_mass(ebm) >= ratio * my_min_mass:
+        return None  # its pieces would still eat us — no cover, just flee
+
+    best = None
+    best_d_us = math.inf
+    for v in query.visible_viruses:
+        vx, vy = v.pos
+        if math.hypot(vx - cx, vy - cy) > params.virus_shield_range:
+            continue
+        # shield spot: just past the virus centre, on the far side from the eater
+        dev = math.hypot(vx - ex, vy - ey) or 1e-9
+        px = vx + (vx - ex) / dev * params.virus_shield_standoff
+        py = vy + (vy - ey) / dev * params.virus_shield_standoff
+        d_us = math.hypot(px - cx, py - cy)
+        d_e = math.hypot(px - ex, py - ey)
+        if d_us + params.virus_shield_margin > d_e:
+            continue  # cannot win the race to the shield
+        if d_us < best_d_us:
+            best_d_us = d_us
+            best = (px, py)
+    if best is None:
+        return None
+    return best[0] - cx, best[1] - cy
+
+
+def greedy_feed_action(query, params: HeuristicParams = HeuristicParams()
+                       ) -> Tuple[float, float, bool]:
+    """Deterministic early-game forager: flee any enemy that can eat us if it is
+    within striking range (behind a virus shield when one is usable), else flow
+    down the food density gradient, else drift to center. Never splits.
+
+    The potential-field hunter needs mass before its predation pays off, and its
+    many-force sum is jittery when everything on screen is small; this clean
+    greedy rule grows a fast, stable base first.
+
+    v8 food targeting is a gravity well, not nearest-pellet: the sum over all
+    visible pellets of the unit vector weighted ``1/d**feed_food_falloff``.
+    Nearest-pellet had the lawnmower failure — flapping between equidistant
+    pellets and walking to one lone pellet over a 15-pellet cluster a step
+    farther. The well pulls toward density, sweeps pellets en route, and the
+    momentum blend upstream damps the residual jitter."""
+    you = query.you
+    blobs = you.blobs
+    if not blobs:
+        return 0.0, 0.0, False
+    cx, cy = you.pos
+    my_min_mass = min(b.radius * b.radius for b in blobs)
+    my_max_mass = max(b.radius * b.radius for b in blobs)
+
+    flee = _flee_vector(query, cx, cy, my_min_mass, params)
+    if flee is not None:
+        shield = _virus_shield_heading(query, cx, cy, my_min_mass, my_max_mass,
+                                       params)
+        if shield is not None:
+            return shield[0], shield[1], False
+        return flee[0], flee[1], False
+
+    # gravity well over all visible food: densest cluster wins
+    fx = fy = 0.0
+    for f in query.visible_food:
+        dx = f.pos[0] - cx
+        dy = f.pos[1] - cy
+        d = math.hypot(dx, dy)
+        if d < 1e-9:
+            continue
+        w = 1.0 / (d ** params.feed_food_falloff)
+        fx += dx / d * w
+        fy += dy / d * w
+    if fx * fx + fy * fy > 1e-18:
+        return fx, fy, False
+
+    dx = spec.ARENA_SIZE / 2.0 - cx
+    dy = spec.ARENA_SIZE / 2.0 - cy
+    if dx * dx + dy * dy < 1e-6:
+        return 0.0, 0.0, False
+    return dx, dy, False
+
+
+# --- virus detour: pop a virus for the mass bump, then hand off to HUNT --------
+
+def _nearest_consumable_virus(query):
+    """Position ``(x, y)`` of the nearest virus our biggest blob can eat, or
+    ``None``. Engine rule (``StateMutator._can_consume_virus``): a blob eats a
+    virus when ``mass > virus_radius**2 * EAT_SIZE_RATIO`` — i.e. mass > 2.7 for
+    the stock 1.5-radius virus, the same value as VIRUS_POP_MASS_THRESHOLD."""
+    blobs = query.you.blobs
+    if not blobs:
+        return None
+    my_max_mass = max(b.radius * b.radius for b in blobs)
+    ratio = spec.EAT_SIZE_RATIO
+    cx, cy = query.you.pos
+    best = None
+    best_d2 = math.inf
+    for v in query.visible_viruses:
+        if my_max_mass <= (v.radius * v.radius) * ratio:
+            continue  # too small to eat this virus
+        dx = v.pos[0] - cx
+        dy = v.pos[1] - cy
+        d2 = dx * dx + dy * dy
+        if d2 < best_d2:
+            best_d2 = d2
+            best = (v.pos[0], v.pos[1])
+    return best
+
+
+def _virus_pop_safe(query, virus_pos, params: HeuristicParams) -> bool:
+    """Reachability gate for a virus pop — replaces the old ``_eater_in_range``
+    gate, which tested the wrong masses.
+
+    A pop is a death trap done carelessly: touching the virus scatters our blob
+    into up to ``MAX_BLOB_COUNT`` pieces of ~``(mass + VIRUS_MASS_GAIN)/16`` each
+    (≈0.31 mass from a fresh pop), and those pieces are so small that *almost
+    any* enemy — even a 0.81-mass respawn — out-masses them by the eat ratio. So
+    the test is not "can anyone eat us now" (the old gate, keyed on our current
+    big blob) but "can any enemy reach the pop site in time".
+
+    For each enemy that could eat a post-pop piece we compute how close it gets
+    to the virus while we travel there: it closes at its own movement speed for
+    the ``t_us`` ticks our blob needs to arrive. If at that moment it is already
+    within its next-turn eat reach of the scatter (its body + one tick of its
+    own movement + the spread of the pieces + a buffer), the pop is unsafe.
+
+    We credit our own escape implicitly: once scattered we are tiny and
+    therefore *faster* than any eater (smaller = faster in this engine), so if
+    we flee the opposite way the separation only grows after the pop — the
+    binding instant is arrival, which is exactly what this checks. ``t_us`` is
+    where travel time enters: a virus far from us gives every enemy many ticks
+    to converge, so distance alone is not safety."""
+    blobs = query.you.blobs
+    if not blobs:
+        return False
+    cx, cy = query.you.pos
+    ratio = spec.EAT_SIZE_RATIO
+    my_max_r = max(b.radius for b in blobs)
+    my_max_mass = my_max_r * my_max_r
+
+    vx, vy = virus_pos
+    d_us = math.hypot(vx - cx, vy - cy)
+    t_us = d_us / _speed(my_max_r)  # ticks for our blob to reach the virus
+
+    # mass of each scattered piece (conservative: the popped blob splits into as
+    # many pieces as the cap allows; pre-HUNT we hold 1 blob → 16 pieces)
+    pieces = max(1, spec.MAX_BLOB_COUNT - len(blobs) + 1)
+    piece_mass = (my_max_mass + spec.VIRUS_MASS_GAIN) / pieces
+
+    for b in query.visible_blobs:
+        ebm = b.radius * b.radius
+        if ebm < ratio * piece_mass:
+            continue  # too small to eat even a scattered piece — no threat
+        v_e = _speed(b.radius)
+        d_e = math.hypot(b.pos[0] - vx, b.pos[1] - vy)
+        gap_at_pop = d_e - t_us * v_e  # closest it can be to the pop site
+        reach = b.radius + v_e + params.virus_pop_spread + params.virus_pop_buffer
+        if gap_at_pop <= reach:
+            return False
+    return True
+
+
+def _virus_pop_safe_window(query, virus_pos, params: HeuristicParams,
+                           horizon: int) -> bool:
+    """v10 endgame pop gate: ``_virus_pop_safe`` extended over the full
+    merge-lockout window and assuming the enemy plays optimally to steal a piece.
+
+    The scattered pieces stay merge-locked (and small, universally edible) for
+    ``horizon`` = ``SPLIT_COOLDOWN_FRAMES`` ticks after the pop. So the pop is
+    only safe if no enemy big enough to eat a piece can bring the scatter inside
+    its eat reach at ANY point across the ``t_us + horizon``-tick window — not
+    just the instant of arrival (which is all ``_virus_pop_safe`` checks).
+
+    Optimal-play assumption: an enemy that can split for the kill is credited a
+    one-shot ``SPLIT_REACH`` bonus on its reach (a half-mass child that still
+    out-masses a piece by the eat ratio), mirroring the split-reach handling in
+    the threat term and ``_eater_in_range``. Being stricter than
+    ``_virus_pop_safe``, an unsafe verdict simply leaves the virus repulsive so
+    the HUNT field pulls us onto smaller prey instead — never a riskier action."""
+    blobs = query.you.blobs
+    if not blobs:
+        return False
+    cx, cy = query.you.pos
+    ratio = spec.EAT_SIZE_RATIO
+    my_max_r = max(b.radius for b in blobs)
+    my_max_mass = my_max_r * my_max_r
+
+    vx, vy = virus_pos
+    d_us = math.hypot(vx - cx, vy - cy)
+    t_us = d_us / _speed(my_max_r)  # ticks for our blob to reach the virus
+
+    # closing time available to an enemy: our travel time to the pop, plus the
+    # whole merge-lockout window during which the pieces remain vulnerable.
+    t_window = t_us + max(0, horizon)
+
+    pieces = max(1, spec.MAX_BLOB_COUNT - len(blobs) + 1)
+    piece_mass = (my_max_mass + spec.VIRUS_MASS_GAIN) / pieces
+
+    for b in query.visible_blobs:
+        ebm = b.radius * b.radius
+        if ebm < ratio * piece_mass:
+            continue  # too small to eat even a scattered piece — no threat
+        v_e = _speed(b.radius)
+        d_e = math.hypot(b.pos[0] - vx, b.pos[1] - vy)
+        gap_at_window = d_e - t_window * v_e  # closest it can get across window
+        reach = b.radius + v_e + params.virus_pop_spread + params.virus_pop_buffer
+        # optimal play: it may split toward the scatter if a half still eats a
+        # piece — credit that one lunge as extra reach.
+        if ebm >= spec.SPLIT_MIN_MASS and (ebm * 0.5) >= ratio * piece_mass:
+            reach += spec.SPLIT_REACH
+        if gap_at_window <= reach:
+            return False
+    return True
+
+
+def virus_seek_action(query, virus_pos,
+                      params: HeuristicParams = HeuristicParams()
+                      ) -> Tuple[float, float, bool]:
+    """Beeline to ``virus_pos`` to pop it — but flee an eater within strike range
+    first (behind a virus shield when one is usable, same survival guard as
+    FEED). We never split; contact triggers the engine's own pop (splitting us
+    to the blob cap for a +VIRUS_MASS_GAIN bump)."""
+    you = query.you
+    blobs = you.blobs
+    if not blobs:
+        return 0.0, 0.0, False
+    cx, cy = you.pos
+    my_min_mass = min(b.radius * b.radius for b in blobs)
+    my_max_mass = max(b.radius * b.radius for b in blobs)
+
+    flee = _flee_vector(query, cx, cy, my_min_mass, params)
+    if flee is not None:
+        shield = _virus_shield_heading(query, cx, cy, my_min_mass, my_max_mass,
+                                       params)
+        if shield is not None:
+            return shield[0], shield[1], False
+        return flee[0], flee[1], False
+
+    return virus_pos[0] - cx, virus_pos[1] - cy, False
+
+
+def _has_eatable_enemy(query) -> bool:
+    """True if our largest blob can eat some visible enemy blob (the exact mass
+    rule) — the trigger to commit to hunting."""
+    blobs = query.you.blobs
+    if not blobs:
+        return False
+    my_max_mass = max(b.radius * b.radius for b in blobs)
+    ratio = spec.EAT_SIZE_RATIO
+    return any(my_max_mass >= ratio * (b.radius * b.radius)
+               for b in query.visible_blobs)
+
+
+class HeuristicController:
+    """Phased policy: deterministic greedy FEED early, an optional one-shot VIRUS
+    detour, then latch to the potential-field HUNT and never revert. Every phase
+    passes through the death-zone safety layer in :meth:`act` before the move is
+    sent — in v8 that layer is also virus-aware (holds a virus shield against a
+    poppable chaser; never steps a poppable blob of ours onto an unsafe virus).
+
+    FEED (default) forages down the food-density gradient while small. Before
+    ``virus_seek_until_round``, the first time we are big enough to eat a virus
+    (mass > 2.7) with one in view, we detour to pop it — a +VIRUS_MASS_GAIN bump
+    the engine pays out by splitting us to the blob cap (~16 pieces from one
+    blob) — but only when ``_virus_pop_safe`` clears it (no enemy can reach the
+    pop site by the time we arrive). That pop is the only way a pre-HUNT bot
+    gains blobs, so we use ``len(blobs) > 1`` as the "virus eaten" signal and
+    hand the scattered pieces straight to HUNT. Otherwise, once the round
+    reaches ``feed_until_round`` **and** there is prey our biggest blob can eat
+    in view, we commit to HUNT for the rest of the game (``_hunting`` stays
+    set). One instance per seat per game — :meth:`reset` returns it to FEED for
+    a fresh game; respawns within a game do **not** revert.
+
+    v10: once we are HUNTing, each tick re-checks ``_endgame_active`` (are we
+    winning?) and, when true, swaps to the ``_endgame_params`` posture — a
+    stronger, longer-range prey pull and a higher virus-eat cap, with the
+    stricter cooldown-window pop gate — for that tick only. The gate is not a
+    latch, so losing the lead reverts us to the safe baseline. Safety terms and
+    ``_safe_heading`` are unchanged, so the extra aggression stays bounded."""
+
+    def __init__(self, params: HeuristicParams | None = None) -> None:
+        self._params = params or HeuristicParams()
+        self._hunting = False
+        self._virus_seeking = False
+        self._prev_move = (0.0, 0.0)
+
+    def reset(self) -> None:
+        self._hunting = False
+        self._virus_seeking = False
+        self._prev_move = (0.0, 0.0)
+
+    def act(self, query) -> Tuple[float, float, bool]:
+        """Phase policy, a momentum low-pass on the heading, then the death-zone
+        safety veto. At a field equilibrium the raw heading is small and flips
+        sign tick-to-tick (jitter); carrying a fraction of the previous (larger,
+        committed) heading forward lets the stronger recent direction dominate
+        and damps the dither. The engine only uses the heading's *direction*, so
+        blending on the (unit) vector is what gives small residuals little
+        weight. Finally ``_safe_heading`` overrides the result if — and only if —
+        it would step a blob of ours into an enemy's next-turn kill disk (or
+        onto a virus that would shatter us unsafely).
+
+        v10: the endgame posture only ever changes the *field* params fed to the
+        policy; the momentum blend and the ``_safe_heading`` veto below run on
+        baseline ``self._params`` exactly as in v8, so the safety floor is
+        identical whether or not we are winning."""
+        dx, dy, split = self._policy(query)
+        m = self._params.momentum
+        mag = math.hypot(dx, dy) or 1e-9
+        dx, dy = dx / mag, dy / mag
+        dx += m * self._prev_move[0]
+        dy += m * self._prev_move[1]
+        # Hard safety layer, mode-agnostic. Skipped while splitting: a split-kill
+        # is a committed move with its own (_should_split) safety check, and the
+        # engine launches the child toward this heading — redirecting it here
+        # would scatter the split instead of landing the kill.
+        if not split:
+            dx, dy = _safe_heading(query, dx, dy, self._params)
+        self._prev_move = (dx, dy)
+        return dx, dy, split
+
+    def _policy(self, query) -> Tuple[float, float, bool]:
+        p = self._params
+        if self._hunting:
+            # v10: press the advantage when winning, else the baseline HUNT.
+            if _endgame_active(query, p):
+                return heuristic_action(query, _endgame_params(p), endgame=True)
+            return heuristic_action(query, p)
+
+        blobs = query.you.blobs
+
+        # The virus popped us (FEED and the detour never split, so >1 blob can
+        # only mean a virus): the detour is done — hand the pieces to HUNT.
+        if self._virus_seeking and len(blobs) > 1:
+            self._virus_seeking = False
+            self._hunting = True
+            if _endgame_active(query, p):
+                return heuristic_action(query, _endgame_params(p), endgame=True)
+            return heuristic_action(query, p)
+
+        # Detour to the nearest eatable virus while it is early, one is in view,
+        # and the pop site is reachability-safe — the pop scatters us to the blob
+        # cap into tiny, universally-edible pieces, so never take it (nor keep
+        # taking it) when an enemy can reach the pop site in time.
+        virus = _nearest_consumable_virus(query)
+        safe = virus is not None and _virus_pop_safe(query, virus, p)
+        if safe and query.round < p.virus_seek_until_round:
+            self._virus_seeking = True
+        if self._virus_seeking and safe:
+            return virus_seek_action(query, virus, p)
+        self._virus_seeking = False  # no reachable/safe virus — resume normal flow
+
+        # normal FEED -> HUNT latch
+        if query.round >= p.feed_until_round and _has_eatable_enemy(query):
+            self._hunting = True
+            if _endgame_active(query, p):
+                return heuristic_action(query, _endgame_params(p), endgame=True)
+            return heuristic_action(query, p)
+        return greedy_feed_action(query, p)
+
+
+# --- kit pipe loop + inlined fail-safe (bot never leaves a query unanswered) ---
+
+def _zero_move(player_id: int) -> MovePlayer:
+    return MovePlayer(player_id=player_id,
+                      direction=DirectionModel(x=0.0, y=0.0), split=False)
+
+
+def _flee_center(query, player_id: int) -> MovePlayer:
+    try:
+        x, y = query.you.pos
+        dx = spec.ARENA_SIZE / 2.0 - float(x)
+        dy = spec.ARENA_SIZE / 2.0 - float(y)
+        if abs(dx) > 1e-9 or abs(dy) > 1e-9:
+            return MovePlayer(player_id=player_id,
+                              direction=DirectionModel(x=dx, y=dy), split=False)
+    except Exception:
+        pass
+    return _zero_move(player_id)
+
+
+def main() -> None:
+    conn = Connection()  # open pipes first — the engine's open-pipe alarm is live
+    gc.collect()
+    gc.disable()
+    controller = HeuristicController()  # FEED->HUNT latch; one game = one process
+    player_id = None
+
+    while True:
+        try:
+            raw = conn._receive()
+        except EOFError:
+            return
+        query = None
+        try:
+            query = QueryMovePlayer.model_validate_json(raw)
+            player_id = query.you.player_id
+        except Exception:
+            if player_id is None:
+                try:
+                    player_id = int(json.loads(raw)["you"]["player_id"])
+                except Exception:
+                    player_id = 0
+        try:
+            dx, dy, split = controller.act(query)
+            move = MovePlayer(player_id=player_id,
+                              direction=DirectionModel(x=float(dx), y=float(dy)),
+                              split=bool(split))
+            if move.player_id != player_id:
+                raise ValueError("bad player_id")
+        except Exception:
+            move = _flee_center(query, player_id) if query is not None \
+                else _zero_move(player_id)
+        conn.send_move(move)
+
+
+if __name__ == "__main__":
+    main()

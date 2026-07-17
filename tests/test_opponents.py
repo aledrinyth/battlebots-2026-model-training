@@ -146,7 +146,10 @@ def test_cautious_flee_chase_food_priority():
 
 
 def test_make_bot_registry():
-    assert set(BOTS) == {"random", "dont_move", "greedy_food", "cautious", "coward", "chaser"}
+    assert set(BOTS) == {"random", "dont_move", "greedy_food", "cautious",
+                         "coward", "chaser", "potential_field",
+                         "potential_field_v6", "potential_field_v7",
+                         "potential_field_v8"}
     assert isinstance(make_bot("chaser"), ChaserBot)
     with pytest.raises(KeyError):
         make_bot("nope")

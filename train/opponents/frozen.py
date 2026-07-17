@@ -45,4 +45,26 @@ class FrozenPolicyBot(ScriptedBot):
         return ActionAdapter.to_move(query.you.player_id, action)
 
 
-__all__ = ["FrozenPolicyBot"]
+class RailedPolicyBot(FrozenPolicyBot):
+    """A frozen policy with the Track-2 deploy-time defensive rails applied.
+
+    Same NumPy forward as :class:`FrozenPolicyBot`, then ``bot.rails.apply_rails``
+    vetoes suicidal moves — the *exact* override the shipped bot uses. Seat it as
+    an evaluate ``--scripted-subject`` to gate the rails against the un-railed
+    policy on the meta field (identical seeds ⇒ paired).
+    """
+
+    def __init__(self, weights_path, policy: NumpyPolicy | None = None) -> None:
+        super().__init__(weights_path, policy=policy)
+        self.name = f"railed:{Path(weights_path).stem}"
+
+    def act(self, query):  # noqa: ANN001 - QueryMovePlayer
+        from bot.rails import apply_rails
+
+        obs = self._featurizer.featurize(query)
+        action, self._hidden = self._policy.act(obs, self._hidden)
+        action = apply_rails(obs, action)
+        return ActionAdapter.to_move(query.you.player_id, action)
+
+
+__all__ = ["FrozenPolicyBot", "RailedPolicyBot"]
