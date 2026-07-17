@@ -4,11 +4,11 @@ Need a bot that grows early and survives actual opponents. The training score al
 
 ## Where I'm at
 
-Potential-field controller and defensive rails. Food/prey pull, threats/viruses/walls push. FEED then HUNT; every seat gets its own controller state.
+Flat builders for the portal. The earlier package injection approach can upset the import scanner, so put the needed definitions into a plain single-file namespace.
 
-Split-to-kill needs three checks: the child can eat the target, the target is reachable, and an enemy can't immediately eat that child. Don't just crank aggression because one highlight looked good.
+Dependency order matters. Strip internal package imports carefully, preserve constants, embed NN weights, and compare generated actions against the source bot. For the heuristic, keep the generated output small and scan it too.
 
-Frozen and railed opponent names go through the same registry. Versioned opponents load their exact `dist/` files, so those files stay in the snapshot. Rails exist; don't infer they're deployed everywhere.
+Gate the exact file. This note keeps coming back because it's easy to skip.
 
 ## Running things
 
@@ -18,4 +18,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 35. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This groups uncommitted work into a logical stage. Git reference: `605697b`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 36. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This groups uncommitted work into a logical stage. Git reference: `605697b`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
