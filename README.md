@@ -4,9 +4,13 @@ Need a bot that grows early and survives actual opponents. The training score al
 
 ## Where I'm at
 
-C/WAT/WASM search-kernel experiment alongside the old tiny feasibility probe.
+Current handoff. Source, deployed bots, conversion weights, and research experiments are together. Still too many directions, so pick the next measurement before the next implementation.
 
-Need build reproducibility, parity, and budget checks before routing live actions through it. The kernel files being here doesn't prove a search policy is shipped. Leave the Python controller as the useful baseline while this gets checked.
+Phase-expert idea: net for rounds 0–400, another for 400–800, heuristic for 800–1400. BC warm-start then PPO per expert. Phase end mass as an objective; no critic bootstrap across a phase boundary. Reset recurrent state at the switch. For later-phase starts mix replay states with our own earlier expert's end states, otherwise the handoff gets trained on a world it never sees.
+
+This is a plan, not an implemented composite. First check per-phase data volume and whether the expert beats the heuristic in paired full games against meta clones. If it doesn't, keep the heuristic. GPU/JAX/Triton notes were research directions, not proof of a fast working backend.
+
+Loose ends: clone/checkpoint paths, early survival, portal gate on the final artifact. Also that incomplete `CurrentBot.py` fixture still exists. Don't silently call its syntax error a new regression.
 
 ## Running things
 
@@ -16,4 +20,4 @@ Known loose end: `tests/fixtures/bots/CurrentBot.py` has an empty main guard and
 
 ---
 
-Progression copy 39. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This groups uncommitted work into a logical stage. Git reference: `605697b`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
+Progression copy 40. README rewritten for this staged collection; first-person wording is editorial, not a recovered diary. This groups uncommitted work into a logical stage. Git reference: `605697b`. Detailed provenance/file hashes stay in `SNAPSHOT.json`.
